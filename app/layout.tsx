@@ -1,6 +1,7 @@
 import "./globals.css";
 import type { Metadata } from "next";
 import Link from "next/link";
+import Navigation from "@components/Navigation";
 
 export const metadata: Metadata = {
   title: "Clothery",
@@ -11,17 +12,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
   return (
     <html lang="ko">
       <body>
-        <nav className="navbar">
-          <div className="navbar-inner container">
-            <Link href="/" className="brand">
-              <span className="brand-badge" />
-              Clothery
-            </Link>
-            <div className="nav-links">
-              <Link href="/login" className="nav-btn">로그인</Link>
-            </div>
-          </div>
-        </nav>
+        <Navigation />
         <main className="container">{children}</main>
         <footer className="footer">
           <div className="container footer-inner">
