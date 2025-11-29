@@ -161,7 +161,7 @@ a {
 .nav-tab.active::after {
   content: "";
   position: absolute;
-  bottom: -15px;
+  bottom: 0;
   left: 16px;
   right: 16px;
   height: 2px;
@@ -259,7 +259,6 @@ a {
   flex: none;
   width: 100%;
 }
-.toolbar .sort-select { align-self: flex-end; }
 .list-toolbar {
   display: flex;
   align-items: center;
@@ -374,7 +373,10 @@ a {
 @media (max-width: 640px) {
   .category-dropdown-wrapper {
     display: block;
-    margin-bottom: 16px;
+  }
+  /* layout 밖의 카테고리 드롭다운 숨기기 (panel 안의 것만 표시) */
+  .layout > .category-dropdown-wrapper {
+    display: none;
   }
 }
 
@@ -465,6 +467,17 @@ a {
 
 .content {
   min-height: 60vh;
+}
+.content h1 {
+  font-size: 1.75rem;
+  font-weight: 700;
+  margin-top: 0;
+  margin-bottom: 24px;
+}
+@media (max-width: 640px) {
+  .content h1 {
+    font-size: 1.5rem;
+  }
 }
 
 .grid {

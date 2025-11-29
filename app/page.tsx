@@ -3,6 +3,7 @@
 import { useMemo, useState } from "react";
 import SearchBar from "@components/SearchBar";
 import CategorySidebar from "@components/CategorySidebar";
+import SortDropdown from "@components/SortDropdown";
 import ProductCard from "@components/ProductCard";
 import { PRODUCTS } from "@lib/data";
 import { Category } from "@lib/types";
@@ -41,20 +42,18 @@ export default function HomePage() {
     <div className="layout">
       <CategorySidebar selected={category} onSelect={setCategory} />
       <div className="content">
-        <div className="toolbar">
-          <SearchBar value={query} onChange={setQuery} />
+        <h1 style={{ marginTop: 0, marginBottom: 24 }}>상품 목록</h1>
+        
+        <div className="panel" style={{ marginBottom: 24 }}>
+          <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+            <SearchBar value={query} onChange={setQuery} />
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12, alignItems: "stretch" }}>
+              <CategorySidebar selected={category} onSelect={setCategory} mobileOnly />
+              <SortDropdown selected={sort} onSelect={setSort} mobileOnly />
+            </div>
+          </div>
         </div>
-        <div className="list-toolbar">
-          <select
-            aria-label="정렬 선택"
-            value={sort}
-            onChange={(e) => setSort(e.target.value as any)}
-            className="sort-select"
-          >
-            <option value="price-asc">낮은가격순</option>
-            <option value="price-desc">높은가격순</option>
-          </select>
-        </div>
+
         <div className="grid">
           {sorted.map((p) => (
             <ProductCard key={p.id} product={p} />

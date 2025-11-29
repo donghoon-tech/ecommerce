@@ -4,6 +4,8 @@ import Link from "next/link";
 import { useMemo, useState } from "react";
 import { ORDERS } from "@lib/data";
 import { OrderStatus } from "@lib/types";
+import StatusDropdown from "@components/StatusDropdown";
+import SearchBar from "@components/SearchBar";
 
 export default function OrdersPage() {
   const [statusFilter, setStatusFilter] = useState<OrderStatus | "전체">("전체");
@@ -49,35 +51,16 @@ export default function OrdersPage() {
       <h1 style={{ marginTop: 0, marginBottom: 24 }}>주문 목록</h1>
 
       <div className="panel" style={{ marginBottom: 24 }}>
-        <div style={{ display: "flex", gap: 16, flexWrap: "wrap", alignItems: "center" }}>
-          <div style={{ flex: "1 1 300px", minWidth: 200 }}>
-            <input
-              type="text"
-              placeholder="주문번호, 상품명, 판매자, 구매자로 검색..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              style={{
-                width: "100%",
-                padding: "10px 12px",
-                borderRadius: "10px",
-                border: "1px solid var(--border)",
-                background: "#ffffff",
-                fontSize: "1rem",
-              }}
-            />
+        <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+          <SearchBar 
+            value={searchQuery} 
+            onChange={setSearchQuery}
+            placeholder="주문번호, 상품명, 판매자, 구매자로 검색..."
+            ariaLabel="주문 검색"
+          />
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12, alignItems: "stretch" }}>
+            <StatusDropdown selected={statusFilter} onSelect={setStatusFilter} />
           </div>
-          <select
-            value={statusFilter}
-            onChange={(e) => setStatusFilter(e.target.value as OrderStatus | "전체")}
-            className="sort-select"
-            style={{ minWidth: 160 }}
-          >
-            <option value="전체">전체 상태</option>
-            <option value="거래가능">거래가능</option>
-            <option value="예약">예약</option>
-            <option value="처리중">처리중</option>
-            <option value="거래완료">거래완료</option>
-          </select>
         </div>
       </div>
 

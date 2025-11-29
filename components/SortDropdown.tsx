@@ -1,16 +1,21 @@
 "use client";
 
 import { useState, useEffect, useRef } from "react";
-import { Category } from "@lib/types";
-import { CATEGORIES } from "@lib/data";
 
-interface CategorySidebarProps {
-  selected?: Category | "전체";
-  onSelect: (category: Category | "전체") => void;
+type SortOption = "price-asc" | "price-desc";
+
+interface SortDropdownProps {
+  selected?: SortOption;
+  onSelect: (sort: SortOption) => void;
   mobileOnly?: boolean;
 }
 
-export default function CategorySidebar({ selected = "전체", onSelect, mobileOnly = false }: CategorySidebarProps) {
+const SORT_OPTIONS: { value: SortOption; label: string }[] = [
+  { value: "price-asc", label: "낮은가격순" },
+  { value: "price-desc", label: "높은가격순" },
+];
+
+export default function SortDropdown({ selected = "price-asc", onSelect, mobileOnly = false }: SortDropdownProps) {
   const [isOpen, setIsOpen] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
 
@@ -31,10 +36,12 @@ export default function CategorySidebar({ selected = "전체", onSelect, mobileO
     };
   }, [isOpen]);
 
-  const handleSelect = (category: Category | "전체") => {
-    onSelect(category);
+  const handleSelect = (sort: SortOption) => {
+    onSelect(sort);
     setIsOpen(false);
   };
+
+  const selectedLabel = SORT_OPTIONS.find((opt) => opt.value === selected)?.label || "낮은가격순";
 
   const MobileDropdown = () => (
     <div className="category-dropdown-wrapper" ref={dropdownRef}>
@@ -44,20 +51,20 @@ export default function CategorySidebar({ selected = "전체", onSelect, mobileO
         aria-expanded={isOpen}
         aria-haspopup="true"
       >
-        <span>카테고리: {selected}</span>
+        <span>정렬: {selectedLabel}</span>
         <span className="category-dropdown-arrow">{isOpen ? "▲" : "▼"}</span>
       </button>
       {isOpen && (
         <div className="category-dropdown">
-          {["전체", ...CATEGORIES].map((c) => {
-            const active = selected === c;
+          {SORT_OPTIONS.map((option) => {
+            const active = selected === option.value;
             return (
               <button
-                key={c}
+                key={option.value}
                 className={`category-dropdown-item${active ? " active" : ""}`}
-                onClick={() => handleSelect(c as Category | "전체")}
+                onClick={() => handleSelect(option.value)}
               >
-                {c}
+                {option.label}
               </button>
             );
           })}
@@ -70,30 +77,7 @@ export default function CategorySidebar({ selected = "전체", onSelect, mobileO
     return <MobileDropdown />;
   }
 
-  return (
-    <>
-      {/* 데스크톱 사이드바 */}
-      <aside className="sidebar">
-        <div className="sidebar-title">카테고리</div>
-        <div className="category-list">
-          {["전체", ...CATEGORIES].map((c) => {
-            const active = selected === c;
-            return (
-              <button
-                key={c}
-                className={`category-item${active ? " active" : ""}`}
-                onClick={() => onSelect(c as Category | "전체")}
-              >
-                {c}
-              </button>
-            );
-          })}
-        </div>
-      </aside>
-
-      {/* 모바일 드롭다운 버튼 (layout 안에 렌더링) */}
-      <MobileDropdown />
-    </>
-  );
+  // 데스크톱에서는 기존 select 유지하거나 다른 UI 사용
+  return null;
 }
 

@@ -4,6 +4,8 @@ import { useMemo, useState } from "react";
 import Link from "next/link";
 import { REGISTRATION_REQUESTS } from "@lib/data";
 import { RegistrationStatus } from "@lib/types";
+import SearchBar from "@components/SearchBar";
+import RegistrationStatusDropdown from "@components/RegistrationStatusDropdown";
 
 export default function RegistrationListPage() {
   const [statusFilter, setStatusFilter] = useState<RegistrationStatus | "전체">("전체");
@@ -44,35 +46,15 @@ export default function RegistrationListPage() {
       <h1 style={{ marginTop: 0, marginBottom: 24 }}>회원가입 신청 관리</h1>
 
       <div className="panel" style={{ marginBottom: 24 }}>
-        <div style={{ display: "flex", gap: 16, flexWrap: "wrap", alignItems: "center" }}>
-          <div style={{ flex: "1 1 300px", minWidth: 200 }}>
-            <input
-              type="text"
-              placeholder="이메일 또는 전화번호로 검색"
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              style={{
-                width: "100%",
-                padding: "10px 12px",
-                borderRadius: "10px",
-                border: "1px solid var(--border)",
-                background: "#ffffff",
-                fontSize: "1rem",
-              }}
-            />
-          </div>
-          <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-            {(["전체", "대기중", "승인", "반려"] as const).map((status) => (
-              <button
-                key={status}
-                type="button"
-                className={`btn ${statusFilter === status ? "primary" : ""}`}
-                onClick={() => setStatusFilter(status)}
-                style={{ fontSize: "0.9375rem", padding: "8px 16px" }}
-              >
-                {status}
-              </button>
-            ))}
+        <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+          <SearchBar 
+            value={searchQuery} 
+            onChange={setSearchQuery}
+            placeholder="이메일 또는 전화번호로 검색"
+            ariaLabel="회원 검색"
+          />
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12, alignItems: "stretch" }}>
+            <RegistrationStatusDropdown selected={statusFilter} onSelect={setStatusFilter} />
           </div>
         </div>
       </div>
