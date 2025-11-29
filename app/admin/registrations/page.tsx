@@ -1,11 +1,12 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import Link from "next/link";
 import { REGISTRATION_REQUESTS } from "@lib/data";
 import { RegistrationStatus } from "@lib/types";
-import SearchBar from "@components/SearchBar";
+import FilterPanel from "@components/FilterPanel";
 import RegistrationStatusDropdown from "@components/RegistrationStatusDropdown";
+import EmptyState from "@components/EmptyState";
+import CardLink from "@components/CardLink";
 
 export default function RegistrationListPage() {
   const [statusFilter, setStatusFilter] = useState<RegistrationStatus | "전체">("전체");
@@ -43,48 +44,25 @@ export default function RegistrationListPage() {
 
   return (
     <div className="content">
-      <h1 style={{ marginTop: 0, marginBottom: 24 }}>회원가입 신청 관리</h1>
+      <h1>회원가입 신청 관리</h1>
 
-      <div className="panel" style={{ marginBottom: 24 }}>
-        <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-          <SearchBar 
-            value={searchQuery} 
-            onChange={setSearchQuery}
-            placeholder="이메일 또는 전화번호로 검색"
-            ariaLabel="회원 검색"
-          />
-          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12, alignItems: "stretch" }}>
-            <RegistrationStatusDropdown selected={statusFilter} onSelect={setStatusFilter} />
-          </div>
-        </div>
-      </div>
+      <FilterPanel
+        searchValue={searchQuery}
+        onSearchChange={setSearchQuery}
+        searchPlaceholder="이메일 또는 전화번호로 검색"
+        searchAriaLabel="회원 검색"
+      >
+        <RegistrationStatusDropdown selected={statusFilter} onSelect={setStatusFilter} />
+      </FilterPanel>
 
       {filtered.length === 0 ? (
-        <div className="panel">조건에 맞는 신청 내역이 없습니다.</div>
+        <EmptyState message="조건에 맞는 신청 내역이 없습니다." />
       ) : (
-        <div style={{ display: "grid", gap: 12 }}>
+        <div className="list-grid">
           {filtered.map((req) => {
             const statusColor = getStatusBadgeColor(req.status);
             return (
-              <Link
-                key={req.id}
-                href={`/admin/registrations/${req.id}`}
-                className="panel"
-                style={{
-                  display: "block",
-                  textDecoration: "none",
-                  color: "inherit",
-                  transition: "transform 0.1s ease, border-color 0.2s ease",
-                }}
-                onMouseEnter={(e) => {
-                  e.currentTarget.style.transform = "translateY(-2px)";
-                  e.currentTarget.style.borderColor = "#94a3b8";
-                }}
-                onMouseLeave={(e) => {
-                  e.currentTarget.style.transform = "translateY(0)";
-                  e.currentTarget.style.borderColor = "var(--border)";
-                }}
-              >
+              <CardLink key={req.id} href={`/admin/registrations/${req.id}`}>
                 <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 12 }}>
                   <div style={{ flex: 1, minWidth: 0 }}>
                     <div style={{ fontWeight: 600, fontSize: "1.125rem", marginBottom: 8 }}>
@@ -113,7 +91,7 @@ export default function RegistrationListPage() {
                     {req.status}
                   </div>
                 </div>
-              </Link>
+              </CardLink>
             );
           })}
         </div>

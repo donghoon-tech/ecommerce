@@ -5,7 +5,9 @@ import { useMemo, useState } from "react";
 import { ORDERS } from "@lib/data";
 import { OrderStatus } from "@lib/types";
 import StatusDropdown from "@components/StatusDropdown";
-import SearchBar from "@components/SearchBar";
+import FilterPanel from "@components/FilterPanel";
+import EmptyState from "@components/EmptyState";
+import CardLink from "@components/CardLink";
 
 export default function OrdersPage() {
   const [statusFilter, setStatusFilter] = useState<OrderStatus | "전체">("전체");
@@ -48,46 +50,23 @@ export default function OrdersPage() {
 
   return (
     <div className="content">
-      <h1 style={{ marginTop: 0, marginBottom: 24 }}>주문 목록</h1>
+      <h1>주문 목록</h1>
 
-      <div className="panel" style={{ marginBottom: 24 }}>
-        <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-          <SearchBar 
-            value={searchQuery} 
-            onChange={setSearchQuery}
-            placeholder="주문번호, 상품명, 판매자, 구매자로 검색..."
-            ariaLabel="주문 검색"
-          />
-          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12, alignItems: "stretch" }}>
-            <StatusDropdown selected={statusFilter} onSelect={setStatusFilter} />
-          </div>
-        </div>
-      </div>
+      <FilterPanel
+        searchValue={searchQuery}
+        onSearchChange={setSearchQuery}
+        searchPlaceholder="주문번호, 상품명, 판매자, 구매자로 검색..."
+        searchAriaLabel="주문 검색"
+      >
+        <StatusDropdown selected={statusFilter} onSelect={setStatusFilter} />
+      </FilterPanel>
 
       {filtered.length === 0 ? (
-        <div className="panel">조건에 맞는 주문이 없습니다.</div>
+        <EmptyState message="조건에 맞는 주문이 없습니다." />
       ) : (
-        <div style={{ display: "grid", gap: 12 }}>
+        <div className="list-grid">
           {filtered.map((order) => (
-            <Link
-              key={order.id}
-              href={`/orders/${order.id}`}
-              className="panel"
-              style={{
-                display: "block",
-                textDecoration: "none",
-                color: "inherit",
-                transition: "transform 0.1s ease, border-color 0.2s ease",
-              }}
-              onMouseEnter={(e) => {
-                e.currentTarget.style.transform = "translateY(-2px)";
-                e.currentTarget.style.borderColor = "#94a3b8";
-              }}
-              onMouseLeave={(e) => {
-                e.currentTarget.style.transform = "translateY(0)";
-                e.currentTarget.style.borderColor = "var(--border)";
-              }}
-            >
+            <CardLink key={order.id} href={`/orders/${order.id}`}>
               <div style={{ display: "flex", gap: 16, alignItems: "center" }}>
                 {/* 상품 썸네일 */}
                 <img
@@ -149,7 +128,7 @@ export default function OrdersPage() {
                   </div>
                 </div>
               </div>
-            </Link>
+            </CardLink>
           ))}
         </div>
       )}

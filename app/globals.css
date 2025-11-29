@@ -368,16 +368,11 @@ a {
 /* 모바일 카테고리 드롭다운 */
 .category-dropdown-wrapper {
   position: relative;
-  display: none;
+  display: block;
 }
-@media (max-width: 640px) {
-  .category-dropdown-wrapper {
-    display: block;
-  }
-  /* layout 밖의 카테고리 드롭다운 숨기기 (panel 안의 것만 표시) */
-  .layout > .category-dropdown-wrapper {
-    display: none;
-  }
+/* layout 밖의 카테고리 드롭다운 숨기기 (panel 안의 것만 표시) */
+.layout > .category-dropdown-wrapper {
+  display: none;
 }
 
 .category-dropdown-button {
@@ -478,6 +473,44 @@ a {
   .content h1 {
     font-size: 1.5rem;
   }
+}
+
+.filter-panel-content {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.filter-panel-filters {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+  align-items: stretch;
+}
+/* 데스크톱에서 FilterPanel 안의 필터들은 숨김 (정렬은 밖에 별도 배치) */
+@media (min-width: 641px) {
+  .filter-panel-filters {
+    display: none;
+  }
+}
+@media (max-width: 640px) {
+  .filter-panel-filters {
+    display: grid;
+  }
+}
+/* 데스크톱에서 정렬 툴바는 표시, 모바일에서는 숨김 */
+@media (min-width: 641px) {
+  .list-toolbar {
+    display: flex;
+  }
+}
+@media (max-width: 640px) {
+  .list-toolbar {
+    display: none;
+  }
+}
+.list-grid {
+  display: grid;
+  gap: 12px;
 }
 
 .grid {
@@ -602,6 +635,13 @@ a {
     padding: 12px;
     border-radius: 12px;
   }
+}
+.card-link {
+  transition: transform 0.1s ease, border-color 0.2s ease;
+}
+.card-link:hover {
+  transform: translateY(-2px);
+  border-color: #94a3b8;
 }
 
 .thumbs {
