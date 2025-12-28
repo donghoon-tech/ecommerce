@@ -3,10 +3,19 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useAdminMode } from "@/contexts/AdminModeContext";
+import { useCallback } from "react";
 
 export default function Navigation() {
   const pathname = usePathname();
   const { isAdminMode, setIsAdminMode } = useAdminMode();
+
+  const handleToggleAdminMode = useCallback((e: React.MouseEvent | React.TouchEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    const newValue = !isAdminMode;
+    console.log(`[Navigation] Toggle: ${isAdminMode ? '운영자' : '사용자'} → ${newValue ? '운영자' : '사용자'}`);
+    setIsAdminMode(newValue);
+  }, [isAdminMode, setIsAdminMode]);
 
   return (
     <>
@@ -58,12 +67,14 @@ export default function Navigation() {
         <div className="bottom-nav-inner">
           <button
             type="button"
-            onClick={(e) => {
+            onClick={handleToggleAdminMode}
+            onTouchStart={(e) => {
+              // 모바일에서 터치 시작 시 즉시 처리
               e.preventDefault();
-              e.stopPropagation();
-              setIsAdminMode(!isAdminMode);
+              handleToggleAdminMode(e);
             }}
             className={`bottom-nav-item ${isAdminMode ? "active" : ""}`}
+            style={{ WebkitTapHighlightColor: 'transparent' }}
           >
             <svg className="bottom-nav-icon" width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
               {isAdminMode ? (

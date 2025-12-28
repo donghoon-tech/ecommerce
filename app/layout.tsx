@@ -2,6 +2,8 @@ import "./globals.css";
 import type { Metadata, Viewport } from "next";
 import Link from "next/link";
 import Navigation from "@components/Navigation";
+import { AdminModeProvider } from "@/contexts/AdminModeContext";
+import DebugConsole from "@components/DebugConsole";
 
 export const metadata: Metadata = {
   title: "Clothery",
@@ -34,8 +36,9 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
   return (
     <html lang="ko">
       <body>
-        <Navigation />
-        <main className="container">{children}</main>
+        <AdminModeProvider>
+          <Navigation />
+          <main className="container">{children}</main>
         <footer className="footer">
           <div className="container footer-inner">
             <div className="footer-brand">
@@ -73,6 +76,8 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
             </div>
           </div>
         </footer>
+        <DebugConsole />
+        </AdminModeProvider>
       </body>
     </html>
   );

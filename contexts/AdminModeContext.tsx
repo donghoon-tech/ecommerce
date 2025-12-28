@@ -1,6 +1,6 @@
 "use client";
 
-import { createContext, useContext, useState, ReactNode } from "react";
+import { createContext, useContext, useState, ReactNode, useCallback } from "react";
 
 interface AdminModeContextType {
   isAdminMode: boolean;
@@ -12,8 +12,12 @@ const AdminModeContext = createContext<AdminModeContextType | undefined>(undefin
 export function AdminModeProvider({ children }: { children: ReactNode }) {
   const [isAdminMode, setIsAdminMode] = useState(false);
 
+  const handleSetAdminMode = useCallback((value: boolean) => {
+    setIsAdminMode(value);
+  }, []);
+
   return (
-    <AdminModeContext.Provider value={{ isAdminMode, setIsAdminMode }}>
+    <AdminModeContext.Provider value={{ isAdminMode, setIsAdminMode: handleSetAdminMode }}>
       {children}
     </AdminModeContext.Provider>
   );
