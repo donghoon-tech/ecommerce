@@ -1,29 +1,28 @@
-# Dependencies
-node_modules/
-
-# Next.js
-.next/
-out/
-.vercel/
-
-# Logs
-npm-debug.log*
-yarn-debug.log*
-yarn-error.log*
-pnpm-debug.log*
-
-# Env
-.env
-.env.local
-.env.development.local
-.env.test.local
-.env.production.local
-
-# Editor
+# OS / Global
 .DS_Store
-.idea/
-.vscode/
+.cursor/
 
-# Local workspace
-local/
+# Backend (Gradle)
+backend/.gradle/
+backend/build/
+backend/out/
+backend/bin/
+backend/*.log
+backend/*.ipr
+backend/*.iws
+backend/*.iml
 
+# Frontend (Node)
+frontend/node_modules/
+frontend/dist/
+frontend/.idea/
+frontend/.vscode/
+frontend/*.log
+frontend/.env.local
+frontend/.env.development.local
+frontend/.env.test.local
+frontend/.env.production.local
+frontend/.env
+
+# Backend Secrets
+backend/src/main/resources/application-secret.properties
