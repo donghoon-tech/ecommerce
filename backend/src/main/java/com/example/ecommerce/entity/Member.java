@@ -10,40 +10,44 @@ import java.time.LocalDateTime;
 import java.util.UUID;
 
 @Entity
-@Table(name = "registration_requests")
+@Table(name = "members")
 @Data
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
-public class RegistrationRequest {
+public class Member {
     @Id
     @GeneratedValue(strategy = GenerationType.AUTO)
     private UUID id;
 
-    @Column(nullable = false)
-    private String email;
+    @Column(nullable = false) // 논리적 Unique
+    private String username;
 
+    @Column(nullable = false)
+    private String password;
+
+    @Column(nullable = false)
+    @Builder.Default
+    private String role = "USER";
+
+    // 사용자 정보
+    @Column(name = "company_name")
+    private String companyName;
+
+    @Column(nullable = false)
     private String phone;
 
-    @Column(name = "business_license_image")
-    private String businessLicenseImage;
+    private String email;
 
-    @Column(name = "bank_statement_image")
-    private String bankStatementImage;
-
-    @Column(nullable = false)
-    private String status;
-
+    // 사업자 정보
     @Column(name = "business_number")
     private String businessNumber;
 
-    @Column(name = "bank_name")
-    private String bankName;
+    @Column(name = "business_address")
+    private String businessAddress;
 
-    @Column(name = "bank_account_number")
-    private String bankAccountNumber;
-
-    private String notes;
+    @Column(name = "yard_address")
+    private String yardAddress;
 
     @Column(name = "created_at")
     @Builder.Default

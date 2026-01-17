@@ -1,9 +1,6 @@
 package com.example.ecommerce.entity;
 
-import jakarta.persistence.Column;
-import jakarta.persistence.Entity;
-import jakarta.persistence.Id;
-import jakarta.persistence.Table;
+import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
@@ -13,18 +10,25 @@ import java.time.LocalDateTime;
 import java.util.UUID;
 
 @Entity
-@Table(name = "profiles")
+@Table(name = "categories")
 @Data
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
-public class Profile {
+public class Category {
     @Id
-    private UUID id; // References Supabase Auth UUID (manual assignment)
+    @GeneratedValue(strategy = GenerationType.AUTO)
+    private UUID id;
 
+    @Column(nullable = false)
     private String name;
-    private String email;
-    private String phone;
+
+    @Column(nullable = false)
+    private String code;
+
+    @Column(name = "display_order", nullable = false)
+    @Builder.Default
+    private Integer displayOrder = 0;
 
     @Column(name = "created_at")
     @Builder.Default

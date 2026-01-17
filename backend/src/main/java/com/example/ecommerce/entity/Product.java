@@ -5,8 +5,6 @@ import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
-import org.hibernate.annotations.JdbcTypeCode;
-import org.hibernate.type.SqlTypes;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
@@ -24,24 +22,36 @@ public class Product {
     @GeneratedValue(strategy = GenerationType.AUTO)
     private UUID id;
 
-    @Column(unique = true, nullable = false)
-    private String slug;
+    @Column(name = "category_id", nullable = false)
+    private UUID categoryId; // 논리적 연결
 
     @Column(nullable = false)
-    private String title;
+    private String name;
 
     @Column(nullable = false)
     private BigDecimal price;
 
-    @Column(nullable = false)
-    private String category;
+    @Column(name = "stock_quantity", nullable = false)
+    @Builder.Default
+    private Integer stockQuantity = 0;
 
-    @JdbcTypeCode(SqlTypes.ARRAY)
-    @Column(name = "image_urls")
+    // 상품 속성 (필터링용)
+    @Column(nullable = false)
+    private String grade; // 상태 (신재, 고재 등)
+
+    @Column(name = "item_name", nullable = false)
+    private String itemName; // 품목 (파이프 등)
+
+    @Column(nullable = false)
+    private String spec; // 규격 (6m 등)
+
+    @Column(name = "image_urls", columnDefinition = "text[]")
     private List<String> imageUrls;
 
     @Column(name = "thumbnail_url")
     private String thumbnailUrl;
+
+    private String description;
 
     @Column(name = "created_at")
     @Builder.Default

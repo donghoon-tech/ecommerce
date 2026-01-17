@@ -21,20 +21,17 @@ public class Order {
     @GeneratedValue(strategy = GenerationType.AUTO)
     private UUID id;
 
-    @Column(name = "order_number", unique = true, nullable = false)
+    @Column(name = "order_number", nullable = false)
     private String orderNumber;
 
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "product_id")
-    private Product product;
+    @Column(name = "product_id", nullable = false)
+    private UUID productId;
 
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "seller_id")
-    private Profile seller;
+    @Column(name = "seller_id", nullable = false)
+    private UUID sellerId;
 
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "buyer_id")
-    private Profile buyer;
+    @Column(name = "buyer_id", nullable = false)
+    private UUID buyerId;
 
     @Column(nullable = false)
     private String status;

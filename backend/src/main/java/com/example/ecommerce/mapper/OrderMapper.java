@@ -7,7 +7,7 @@ import org.mapstruct.Mapping;
 
 import java.util.List;
 
-@Mapper(componentModel = "spring", uses = { ProductMapper.class, ProfileMapper.class })
+@Mapper(componentModel = "spring", uses = { ProductMapper.class, MemberMapper.class })
 public interface OrderMapper {
     OrderDTO toDTO(Order order);
 

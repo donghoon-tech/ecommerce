@@ -10,8 +10,8 @@ public class OrderDTO {
     private UUID id;
     private String orderNumber;
     private ProductDTO product;
-    private ProfileDTO seller;
-    private ProfileDTO buyer;
+    private MemberDTO seller;
+    private MemberDTO buyer;
     private String status;
     private Integer quantity;
     private BigDecimal totalPrice;
