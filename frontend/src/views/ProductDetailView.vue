@@ -54,6 +54,14 @@ const sellerProducts = ref([
     { id: '105', name: '파이프 행거 (대)', price: 7000, img: 'https://picsum.photos/300/300?random=105' },
 ])
 
+const mockSellers = ['건설자재총판', '대한철강', '안전제일자재', '현대건설자재', 'K-스틸']
+
+// Helper to get seller based on product ID
+const getSellerForProduct = (productId: string) => {
+    const numericId = parseInt(productId.replace(/\D/g, '')) || 0
+    return mockSellers[numericId % mockSellers.length]
+}
+
 onMounted(async () => {
     const slug = route.params.slug
     try {
@@ -65,7 +73,7 @@ onMounted(async () => {
                 // Ensure fields exist if backend is partial
                 title: data.name || data.title, 
                 description: data.description || "본 상품은 건설 현장에서 검증된 최고급 자재입니다. 내구성이 뛰어나며 안전 인증을 통과하였습니다. 대량 구매 시 추가 할인이 가능하오니 판매자에게 문의 바랍니다. \n\n[상품 상세 특징]\n- KC 인증 완료\n- 고강도 강철 사용\n- 부식 방지 코팅 처리",
-                seller: "건설자재총판",
+                seller: data.seller || getSellerForProduct(data.id),
             }
         } else {
             throw new Error('Product not found')
@@ -73,15 +81,16 @@ onMounted(async () => {
     } catch (e) {
         console.warn('Backend fetch failed, using mock data for layout demo', e)
         // Fallback for layout demonstration
+        const mockId = 'mock-1'
         product.value = {
-            id: 'mock-1',
+            id: mockId,
             slug: slug as string,
             title: '프리미엄 시스템 비계 (예시 상품)',
             price: 15000,
             category: '시스템비계 · 동바리',
             thumbnailUrl: `https://picsum.photos/600/600?random=1`,
             description: "이 화면은 백엔드 데이터 연동 실패 시 보여지는 예시 데이터입니다.\n\n강력한 내구성과 안전성을 자랑하는 프리미엄 시스템 비계입니다. 현장에서 가장 많이 사용하는 규격으로, 호환성이 뛰어납니다.",
-            seller: "예시 판매점",
+            seller: getSellerForProduct(mockId),
         }
     }
     // ensure index is valid
@@ -228,8 +237,8 @@ const buyNow = () => {
         <div class="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 mb-16">
             <div class="flex justify-between items-center mb-6 border-b pb-4">
                 <h3 class="text-xl font-bold text-gray-900">이 판매자의 다른 상품</h3>
-                 <button class="text-sm text-indigo-600 font-bold hover:bg-indigo-50 px-3 py-1.5 rounded transition">
-                     판매자 홈 가기 &rarr;
+                 <button @click="$router.push({ path: '/', query: { seller: product?.seller } })" class="text-sm text-indigo-600 font-bold hover:bg-indigo-50 px-3 py-1.5 rounded transition">
+                     이 판매자의 상품 모아보기 &rarr;
                  </button>
             </div>
             

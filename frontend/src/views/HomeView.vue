@@ -1,5 +1,6 @@
 <script setup lang="ts">
-import { onMounted, ref, computed } from 'vue'
+import { onMounted, ref, computed, watch } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
 
 interface Product {
   id: string
@@ -7,25 +8,38 @@ interface Product {
   name: string
   price: number
   thumbnailUrl: string
-}
+  seller?: string
+} 
 
+const route = useRoute()
+const router = useRouter()
 const products = ref<Product[]>([])
 const loading = ref(true)
 const error = ref('')
 
 // Search & Filter
 const searchQuery = ref('')
-const sortOrder = ref('latest') // latest, price-asc, price-desc
+const sortOrder = ref('latest')
+const selectedSellers = ref<string[]>([])
+
+const mockSellers = ['건설자재총판', '대한철강', '안전제일자재', '현대건설자재', 'K-스틸']
 
 // Pagination
 const currentPage = ref(1)
 const itemsPerPage = 10
 
 onMounted(async () => {
+    parseSellerQuery()
+    
   try {
     const res = await fetch('/api/products')
     if (res.ok) {
-        products.value = await res.json()
+        const data = await res.json()
+        // Add mock seller to data for filtering demo
+        products.value = data.map((p: any, idx: number) => ({
+            ...p,
+            seller: mockSellers[idx % mockSellers.length]
+        }))
     } else {
         error.value = `상품을 불러오는데 실패했습니다: ${res.statusText}`
     }
@@ -37,6 +51,53 @@ onMounted(async () => {
   }
 })
 
+// Parse Query Helper
+const parseSellerQuery = () => {
+    const query = route.query.seller
+    if (Array.isArray(query)) {
+        selectedSellers.value = query as string[]
+    } else if (query) {
+        selectedSellers.value = [query as string]
+    } else {
+        selectedSellers.value = []
+    }
+}
+
+// Watch query change
+watch(() => route.query.seller, () => {
+    parseSellerQuery()
+    currentPage.value = 1 // Reset page on filter change
+})
+
+// Toggle Seller Filter
+const toggleSeller = (sellerName: string) => {
+    const current = new Set(selectedSellers.value)
+    if (current.has(sellerName)) {
+        current.delete(sellerName)
+    } else {
+        current.add(sellerName)
+    }
+    
+    const nextSellers = Array.from(current)
+    router.push({
+        query: {
+            ...route.query,
+            seller: nextSellers.length > 0 ? nextSellers : undefined
+        }
+    })
+}
+
+// Clear All Filters
+const clearAllFilters = () => {
+    searchQuery.value = ''
+    router.push({ query: { ...route.query, seller: undefined } })
+}
+
+// Remove Single Seller Filter
+const removeSellerFilter = (sellerName: string) => {
+    toggleSeller(sellerName)
+}
+
 const getMockAddress = (id: string) => {
     const addresses = [
         '서울 강남구', '경기 김포시', '충북 청주시', '경남 김해시', '부산 강서구',
@@ -47,13 +108,18 @@ const getMockAddress = (id: string) => {
 }
 
 const getMockImage = (index: number) => {
-    // 상품 이미지 (건설 자재 관련 느낌을 내기 어렵다면 그냥 랜덤 이미지)
     return `https://picsum.photos/400/400?random=${index + 1}`
 }
 
 // Filtered & Sorted Products
 const filteredProducts = computed(() => {
     let result = [...products.value]
+
+    // 0. Seller Filter (Multiple)
+    if (selectedSellers.value.length > 0) {
+        // Mock logic: exact match
+        result = result.filter(p => p.seller && selectedSellers.value.includes(p.seller))
+    }
 
     // 1. Search
     if (searchQuery.value) {
@@ -67,7 +133,6 @@ const filteredProducts = computed(() => {
     } else if (sortOrder.value === 'price-desc') {
         result.sort((a, b) => b.price - a.price)
     } 
-    // latest is default (assuming original order is latest or random)
 
     return result
 })
@@ -123,8 +188,9 @@ const toggleCategory = (categoryName: string) => {
     <!-- 사이드바: 카테고리 -->
     <aside class="w-1/4 hidden md:block sticky top-24">
       <div class="bg-white p-6 rounded-lg shadow-sm border border-gray-100">
+        <!-- Categories -->
         <h2 class="text-xl font-bold text-gray-900 mb-4 px-2 border-b border-gray-100 pb-2">카테고리</h2>
-        <ul class="space-y-4">
+        <ul class="space-y-4 mb-8">
           <li>
             <a href="#" class="block px-3 py-2 text-indigo-600 font-bold bg-indigo-50 rounded-md whitespace-nowrap">전체보기</a>
           </li>
@@ -166,7 +232,6 @@ const toggleCategory = (categoryName: string) => {
 
     <!-- 메인 컨텐츠 -->
     <main class="w-full md:w-3/4">
-      
       <!-- 검색 및 필터 바 -->
       <div class="bg-white p-4 rounded-lg shadow-sm border border-gray-100 mb-6 flex flex-col sm:flex-row justify-between items-center gap-4">
           <div class="relative w-full sm:w-96">
@@ -186,6 +251,23 @@ const toggleCategory = (categoryName: string) => {
                   <option value="price-asc">낮은 가격순</option>
                   <option value="price-desc">높은 가격순</option>
               </select>
+          </div>
+      </div>
+
+      <!-- Active Filters (Chips) -->
+      <div v-if="selectedSellers.length > 0" class="flex items-start mb-6 -mt-2 animate-fade-in-down">
+          <span class="text-sm font-bold text-gray-500 mr-3 mt-1.5 self-center">적용된 필터:</span>
+          <div class="flex flex-wrap gap-2">
+              <div v-for="seller in selectedSellers" :key="seller" class="flex items-center bg-indigo-50 border border-indigo-200 text-indigo-700 px-3 py-1.5 rounded-full shadow-sm">
+                  <span class="text-xs font-bold uppercase mr-1 text-indigo-400">판매자</span>
+                  <span class="font-bold text-sm mr-2">{{ seller }}</span>
+                  <button @click="removeSellerFilter(seller)" class="text-indigo-400 hover:text-indigo-700 focus:outline-none rounded-full hover:bg-indigo-100 p-0.5 transition-colors">
+                      <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+                  </button>
+              </div>
+              <button @click="clearAllFilters" class="text-xs text-gray-500 hover:text-red-500 underline ml-2 self-center">
+                  전체 해제
+              </button>
           </div>
       </div>
 
@@ -223,16 +305,31 @@ const toggleCategory = (categoryName: string) => {
                   <h3 class="text-lg font-bold text-gray-900 mb-1 line-clamp-2">{{ product.name }}</h3>
 
                   <!-- 2. 가격 (중간) -->
-                  <div class="mb-2">
+                  <div class="mb-3">
                       <p class="text-xl font-bold text-indigo-600">
                         {{ product.price.toLocaleString() }}원
                       </p>
                   </div>
                   
-                  <!-- 3. 주소 (마지막) -->
-                  <div class="mt-auto flex items-center text-sm text-gray-500">
+                  <!-- 3. 주소 -->
+                  <div class="flex items-center text-sm text-gray-500 mb-2">
                       <svg class="w-4 h-4 mr-1 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"></path></svg>
                       {{ getMockAddress(product.id) }}
+                  </div>
+
+                  <!-- 4. 판매자 정보 (하단 고정) -->
+                  <div class="mt-auto pt-3 border-t border-gray-100">
+                      <div class="flex items-center text-sm text-gray-600 mb-2">
+                          <svg class="w-4 h-4 mr-1 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4"></path></svg>
+                          <span class="font-medium">{{ product.seller }}</span>
+                      </div>
+                      <button 
+                          @click.prevent="$router.push({ path: '/', query: { seller: product.seller } })"
+                          class="w-full text-xs font-bold text-indigo-600 bg-indigo-50 hover:bg-indigo-100 border border-indigo-200 py-2 px-3 rounded-md transition-colors flex items-center justify-center gap-1"
+                      >
+                          <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path></svg>
+                          이 판매자 상품 모아보기
+                      </button>
                   </div>
                 </div>
               </router-link>
