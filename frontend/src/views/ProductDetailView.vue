@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { onMounted, ref, computed } from 'vue'
-import { useRoute } from 'vue-router'
+import { useRoute, useRouter } from 'vue-router'
+import { getCartSeller, getCartItemCount, addToCart as addToCartUtil, clearCart, type CartItem } from '../utils/cart'
 
 interface Product {
   id: string
@@ -14,9 +15,18 @@ interface Product {
 }
 
 const route = useRoute()
+const router = useRouter()
 const product = ref<Product | null>(null)
 const selectedImageIndex = ref(0)
 const quantity = ref(1)
+
+// Cart conflict detection
+const currentCartSeller = ref<string | null>(null)
+const currentCartItemCount = ref(0)
+const hasCartConflict = computed(() => {
+    if (!product.value || !currentCartSeller.value) return false
+    return currentCartSeller.value !== product.value.seller
+})
 
 // Mock data helpers
 const mockImages = computed(() => {
@@ -62,7 +72,16 @@ const getSellerForProduct = (productId: string) => {
     return mockSellers[numericId % mockSellers.length]
 }
 
+// Check cart status
+const checkCartStatus = () => {
+    currentCartSeller.value = getCartSeller()
+    currentCartItemCount.value = getCartItemCount()
+}
+
 onMounted(async () => {
+    // Scroll to top when entering product detail page
+    window.scrollTo(0, 0)
+    
     const slug = route.params.slug
     try {
         const res = await fetch(`/api/products/${slug}`)
@@ -95,6 +114,9 @@ onMounted(async () => {
     }
     // ensure index is valid
     selectedImageIndex.value = 0
+    
+    // Check cart status
+    checkCartStatus()
 })
 
 const decreaseQty = () => { if (quantity.value > 1) quantity.value-- }
@@ -104,8 +126,34 @@ const totalPrice = computed(() => {
     return (product.value?.price || 0) * quantity.value
 })
 
+// Cart Actions
 const addToCart = () => {
-    alert(`${product.value?.title} ${quantity.value}개를 장바구니에 담았습니다.`)
+    if (!product.value) return
+    
+    const cartItem: CartItem = {
+        productId: product.value.id,
+        productName: product.value.title,
+        productSlug: product.value.slug,
+        seller: product.value.seller || '',
+        price: product.value.price,
+        quantity: quantity.value,
+        thumbnailUrl: product.value.thumbnailUrl
+    }
+    
+    addToCartUtil(cartItem)
+    checkCartStatus()
+    alert(`${product.value.title} ${quantity.value}개를 장바구니에 담았습니다.`)
+}
+
+const clearAndAddToCart = () => {
+    if (!product.value) return
+    
+    clearCart()
+    addToCart()
+}
+
+const goToCart = () => {
+    router.push('/cart')
 }
 
 const buyNow = () => {
@@ -131,13 +179,13 @@ const buyNow = () => {
         </nav>
 
         <!-- Top Section: Image & Info -->
-        <div class="flex flex-col lg:flex-row gap-8 mb-16">
+        <div class="grid grid-cols-1 lg:grid-cols-5 gap-8 mb-16 items-start">
             
-            <!-- Left: Images -->
-            <div class="w-full lg:w-3/5 space-y-4">
+            <!-- Left: Images (Span 3) -->
+            <div class="lg:col-span-3 flex flex-col h-full">
                 <!-- Main Image -->
-                <div class="aspect-w-4 aspect-h-3 bg-white rounded-xl overflow-hidden shadow-sm border border-gray-100 relative group select-none">
-                    <img :key="selectedImageIndex" :src="selectedImage" class="w-full h-full object-contain object-center transition-opacity duration-300" alt="Product Detail">
+                <div class="flex-1 bg-white rounded-xl overflow-hidden shadow-sm border border-gray-100 relative group select-none min-h-[400px]">
+                    <img :key="selectedImageIndex" :src="selectedImage" class="absolute inset-0 w-full h-full object-contain object-center transition-opacity duration-300" alt="Product Detail">
                     <div class="absolute top-4 left-4 bg-indigo-600 text-white text-xs px-2 py-1 rounded font-bold z-10">BEST</div>
                     
                     <!-- Slider Arrows -->
@@ -163,7 +211,7 @@ const buyNow = () => {
                 </div>
 
                 <!-- Thumbnails -->
-                <div class="flex gap-4 overflow-x-auto pb-2 scrollbar-hide">
+                <div class="flex gap-4 overflow-x-auto pb-2 scrollbar-hide mt-4 h-20 flex-shrink-0">
                     <button 
                         v-for="(img, idx) in mockImages" 
                         :key="idx" 
@@ -176,9 +224,9 @@ const buyNow = () => {
                 </div>
             </div>
 
-            <!-- Right: Product Info & Actions -->
-            <div class="w-full lg:w-2/5">
-                <div class="bg-white p-6 rounded-2xl shadow-sm border border-gray-100">
+            <!-- Right: Product Info & Actions (Span 2) -->
+            <div class="lg:col-span-2 w-full flex flex-col h-full">
+                <div class="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 h-full flex flex-col">
                     <div class="flex justify-between items-start mb-2">
                         <span class="text-indigo-600 font-bold text-sm tracking-wide">{{ product.seller }}</span>
                     </div>
@@ -220,8 +268,41 @@ const buyNow = () => {
                         </div>
                     </div>
 
-                    <!-- Buttons -->
-                    <div class="flex gap-3">
+                    <!-- Spacer to push buttons to bottom -->
+                    <div class="mt-auto"></div>
+
+                    <!-- Cart Conflict Warning -->
+                    <div v-if="hasCartConflict" class="bg-yellow-50 border-2 border-yellow-300 rounded-xl p-5">
+                        <div class="flex items-center gap-3 mb-4">
+                            <svg class="w-7 h-7 text-yellow-600 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path></svg>
+                            <div class="flex-1 min-w-0">
+                                <h3 class="text-base font-bold text-yellow-900 mb-1">다른 판매자 상품이 장바구니에 있습니다</h3>
+                                <p class="text-sm text-yellow-800">
+                                    현재 <strong>'{{ currentCartSeller }}'</strong> 상품 {{ currentCartItemCount }}개가 담겨있습니다. 한 주문에는 같은 판매자 상품만 담을 수 있습니다.
+                                </p>
+                            </div>
+                        </div>
+                        
+                        <div class="flex flex-col gap-2">
+                            <button 
+                                @click="goToCart"
+                                class="w-full bg-white border-2 border-yellow-600 text-yellow-900 py-3 px-4 rounded-lg font-bold hover:bg-yellow-50 transition flex items-center justify-center gap-2"
+                            >
+                                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z"></path></svg>
+                                장바구니 확인하기
+                            </button>
+                            <button 
+                                @click="clearAndAddToCart"
+                                class="w-full bg-red-500 text-white py-3 px-4 rounded-lg font-bold hover:bg-red-600 transition flex items-center justify-center gap-2"
+                            >
+                                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg>
+                                기존 상품 삭제하고 담기
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Normal Buttons -->
+                    <div v-else class="flex gap-3">
                         <button @click="addToCart" class="flex-1 border border-indigo-600 text-indigo-600 py-3.5 rounded-xl font-bold hover:bg-indigo-50 transition transform active:scale-95">
                             장바구니
                         </button>

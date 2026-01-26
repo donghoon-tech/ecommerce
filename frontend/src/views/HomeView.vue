@@ -24,6 +24,12 @@ const selectedSellers = ref<string[]>([])
 
 const mockSellers = ['건설자재총판', '대한철강', '안전제일자재', '현대건설자재', 'K-스틸']
 
+// Helper to get seller based on product ID (same as ProductDetailView)
+const getSellerForProduct = (productId: string) => {
+    const numericId = parseInt(productId.replace(/\D/g, '')) || 0
+    return mockSellers[numericId % mockSellers.length]
+}
+
 // Pagination
 const currentPage = ref(1)
 const itemsPerPage = 10
@@ -35,10 +41,11 @@ onMounted(async () => {
     const res = await fetch('/api/products')
     if (res.ok) {
         const data = await res.json()
-        // Add mock seller to data for filtering demo
-        products.value = data.map((p: any, idx: number) => ({
+        // Add mock seller to data for filtering demo using same logic as detail view
+        products.value = data.map((p: any) => ({
             ...p,
-            seller: mockSellers[idx % mockSellers.length]
+            slug: p.slug || p.id, // Fallback to id if no slug
+            seller: p.seller || getSellerForProduct(p.id)
         }))
     } else {
         error.value = `상품을 불러오는데 실패했습니다: ${res.statusText}`
