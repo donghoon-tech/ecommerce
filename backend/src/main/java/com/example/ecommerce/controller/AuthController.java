@@ -1,6 +1,6 @@
 package com.example.ecommerce.controller;
 
-import com.example.ecommerce.dto.MemberDTO;
+import com.example.ecommerce.dto.UserDTO;
 import com.example.ecommerce.security.JwtTokenProvider;
 import com.example.ecommerce.service.AuthService;
 import lombok.Data;
@@ -51,7 +51,7 @@ public class AuthController {
     }
 
     @PostMapping("/register")
-    public ResponseEntity<MemberDTO> register(@RequestBody RegisterRequest registerRequest) {
+    public ResponseEntity<UserDTO> register(@RequestBody RegisterRequest registerRequest) {
         return ResponseEntity.ok(authService.register(registerRequest));
     }
 

@@ -1,13 +1,10 @@
 package com.example.ecommerce.config;
 
-import com.example.ecommerce.entity.Category;
-import com.example.ecommerce.entity.Member;
-import com.example.ecommerce.entity.Product;
-import com.example.ecommerce.repository.CategoryRepository;
-import com.example.ecommerce.repository.MemberRepository;
-import com.example.ecommerce.repository.ProductRepository;
+import com.example.ecommerce.entity.*;
+import com.example.ecommerce.repository.*;
 import lombok.RequiredArgsConstructor;
 import org.springframework.boot.CommandLineRunner;
+import org.springframework.context.annotation.Profile;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
@@ -15,128 +12,178 @@ import org.springframework.transaction.annotation.Transactional;
 import java.math.BigDecimal;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.UUID;
 
 @Component
 @RequiredArgsConstructor
+@Profile("!test") // 테스트 환경에선 실행 X
 public class DataInitializer implements CommandLineRunner {
 
-    private final MemberRepository memberRepository;
-    private final ProductRepository productRepository;
+    private final UserRepository userRepository;
+    private final BusinessProfileRepository businessProfileRepository;
     private final CategoryRepository categoryRepository;
+    private final ProductRepository productRepository;
+    private final ProductImageRepository productImageRepository;
     private final PasswordEncoder passwordEncoder;
 
     @Override
     @Transactional
     public void run(String... args) throws Exception {
-        if (memberRepository.count() > 1) { // admin 외에 더 있으면 스킵
+        if (userRepository.count() > 0) {
             System.out.println("Data already initialized. Skipping...");
             return;
         }
 
         System.out.println("Initializing Mock Data...");
 
-        // 1. 테스트 유저 생성
-        createTestUsers();
+        // 1. 카테고리 생성
+        List<Category> categories = createCategories();
 
-        // 2. 카테고리 조회 (V1__init.sql에서 생성됨)
-        Category scaffolding = categoryRepository.findByCode("scaffolding"); // 가설재
-        Category euroform = categoryRepository.findByCode("euroform"); // 유로폼
-        
-        if (scaffolding == null || euroform == null) {
-            System.out.println("Categories not found. Check V1__init.sql");
-            return;
-        }
+        // 2. 유저 생성 (Admin, Seller, Buyer)
+        User seller = createUsers();
 
-        // 3. 상품 생성
-        createProducts(scaffolding, euroform);
-        
+        // 3. 상품 생성 (Seller가 등록)
+        createProducts(seller, categories);
+
         System.out.println("Mock Data Initialization Completed!");
     }
 
-    private void createTestUsers() {
-        // 일반 유저
-        Member user = Member.builder()
-                .username("user")
-                .password(passwordEncoder.encode("user1234"))
-                .role("USER")
-                .phone("010-1111-2222")
-                .email("user@example.com")
-                .companyName("개미건설")
-                .build();
-        memberRepository.save(user);
+    private List<Category> createCategories() {
+        List<Category> list = new ArrayList<>();
 
-        // 사업자 유저 (정보 있는)
-        Member bizUser = Member.builder()
-                .username("biz")
-                .password(passwordEncoder.encode("biz1234"))
-                .role("USER")
-                .phone("010-3333-4444")
-                .email("biz@example.com")
-                .companyName("튼튼건설주식회사")
-                .businessNumber("123-45-67890")
-                .businessAddress("서울시 강남구 테헤란로 123")
-                .yardAddress("경기도 하남시 창우동 999")
-                .build();
-        memberRepository.save(bizUser);
+        // 1. 가설재 (Root)
+        Category c1 = categoryRepository.save(Category.builder().name("가설재").depth(0).displayOrder(1).build());
+
+        // 가설재 하위 (품목)
+        Category c1_1 = categoryRepository
+                .save(Category.builder().parent(c1).name("파이프").depth(1).displayOrder(1).build());
+        Category c1_2 = categoryRepository
+                .save(Category.builder().parent(c1).name("안전발판").depth(1).displayOrder(2).build());
+        Category c1_3 = categoryRepository
+                .save(Category.builder().parent(c1).name("써포트").depth(1).displayOrder(3).build());
+
+        list.add(c1_1);
+        list.add(c1_2);
+        list.add(c1_3);
+
+        // 2. 유로폼 (Root)
+        Category c2 = categoryRepository.save(Category.builder().name("유로폼").depth(0).displayOrder(2).build());
+
+        // 유로폼 하위 (품목 - 신재/쇼트 등은 상품 레벨에서 '상태'나 '스펙'으로 처리하거나 카테고리로 분리 가능. 여기선 일단 품목을
+        // '유로폼' 자체로)
+        // 유로폼은 규격이 중요하므로 규격을 카테고리에 넣거나 상품명에 포함.
+        // 요구사항: 구분(유로폼) > 품목(신재/고재) > 규격
+        Category c2_1 = categoryRepository
+                .save(Category.builder().parent(c2).name("유로폼(신재)").depth(1).displayOrder(1).build());
+        Category c2_2 = categoryRepository
+                .save(Category.builder().parent(c2).name("유로폼(고재)").depth(1).displayOrder(2).build());
+        Category c2_3 = categoryRepository
+                .save(Category.builder().parent(c2).name("유로폼(쇼트)").depth(1).displayOrder(3).build());
+
+        list.add(c2_1);
+        list.add(c2_2);
+        list.add(c2_3);
+
+        return list; // 2depth 카테고리들 반환
     }
 
-    private void createProducts(Category scaffolding, Category euroform) {
-        List<Product> products = new ArrayList<>();
+    private User createUsers() {
+        // 1. Admin
+        User admin = User.builder()
+                .username("admin")
+                .passwordHash(passwordEncoder.encode("admin1234"))
+                .name("관리자")
+                .representativePhone("010-0000-0000")
+                .role(User.Role.admin)
+                .businessNumber("000-00-00000")
+                .build();
+        userRepository.save(admin);
 
-        // --- 가설재 (Scaffolding) 상품들 ---
-        String[] scafItems = {"파이프", "클램프", "연결핀", "안전발판"};
-        String[] scafSpecs = {"6m", "4m", "3m", "2m", "1.5m"};
-        String[] grades = {"NEW", "USED"}; // 공통 코드와 일치시켜야 함 (DB엔 한글 '신재'로 들어갔을 수 있으니 확인 필요, 아까 V1엔 코드로 NEW, USED 넣음)
-        // V1__init.sql: ('GRADE', 'NEW', '신재', 1)... 
-        // Product.grade 컬럼은 텍스트. 화면에 보여질 땐 '신재'로 보여야 하니, 여기엔 코드를 넣을지 이름을 넣을지 결정해야 함.
-        // Product 테이블의 grade는 단순 TEXT 컬럼. 필터링 편의를 위해 'NEW', 'USED' 코드를 넣는게 좋음.
+        // 2. Seller (판매자)
+        User seller = User.builder()
+                .username("seller")
+                .passwordHash(passwordEncoder.encode("seller1234"))
+                .name("김판매")
+                .representativePhone("010-1111-1111")
+                .email("seller@example.com")
+                .role(User.Role.user)
+                .businessNumber("111-11-11111")
+                .build();
+        userRepository.save(seller);
 
-        for (int i = 0; i < 10; i++) {
-            String item = scafItems[i % scafItems.length];
-            String spec = scafSpecs[i % scafSpecs.length];
-            String gradeCode = grades[i % 2];
-            String gradeName = gradeCode.equals("NEW") ? "신재" : "고재";
-            
-            products.add(Product.builder()
-                    .categoryId(scaffolding.getId())
-                    .name("가설재 " + item + " " + spec + " (" + gradeName + ")")
-                    .price(new BigDecimal((i + 1) * 5000))
+        BusinessProfile sellerProfile = BusinessProfile.builder()
+                .user(seller)
+                .businessName("대박자재")
+                .businessNumber("111-11-11111")
+                .representativeName("김판매")
+                .officeAddress("서울시 강남구")
+                .storageAddress("경기도 하남시 천현동")
+                .status(BusinessProfile.Status.approved)
+                .isMain(true)
+                .approvedAt(java.time.LocalDateTime.now())
+                .approvedBy(admin)
+                .build();
+        businessProfileRepository.save(sellerProfile);
+
+        // 3. Buyer (구매자)
+        User buyer = User.builder()
+                .username("buyer")
+                .passwordHash(passwordEncoder.encode("buyer1234"))
+                .name("이구매")
+                .representativePhone("010-2222-2222")
+                .email("buyer@example.com")
+                .role(User.Role.user)
+                .businessNumber("222-22-22222")
+                .build();
+        userRepository.save(buyer);
+
+        BusinessProfile buyerProfile = BusinessProfile.builder()
+                .user(buyer)
+                .businessName("튼튼건설")
+                .businessNumber("222-22-22222")
+                .representativeName("이구매")
+                .officeAddress("부산시 해운대구")
+                .status(BusinessProfile.Status.approved) // 승인 완료 가정
+                .isMain(true)
+                .approvedAt(java.time.LocalDateTime.now())
+                .approvedBy(admin)
+                .build();
+        businessProfileRepository.save(buyerProfile);
+
+        return seller;
+    }
+
+    private void createProducts(User seller, List<Category> categories) {
+        String[] locations = { "경기도 하남시", "충청북도 음성군", "경상북도 경산시" };
+
+        for (int i = 0; i < 20; i++) {
+            Category category = categories.get(i % categories.size()); // 랜덤 카테고리
+            String condition = (i % 2 == 0) ? "신재" : "고재";
+
+            Product product = Product.builder()
+                    .seller(seller)
+                    .category(category)
+                    .itemName(category.getName() + " " + condition + " 상품-" + i)
+                    .itemCondition(condition) // 신재/고재
+                    .unitPrice(new BigDecimal((i + 1) * 1000))
+                    .saleUnit("개")
                     .stockQuantity(100 + i * 10)
-                    .grade(gradeCode) // 코드로 저장
-                    .itemName(item)
-                    .spec(spec)
-                    .minOrderQuantity(10)
-                    .description("최고 품질의 " + gradeName + " " + item + "입니다.")
-                    .thumbnailUrl("https://placehold.co/400x300?text=Scaffolding+" + (i+1))
-                    .imageUrls(List.of("https://placehold.co/600x400?text=Detail+1", "https://placehold.co/600x400?text=Detail+2"))
-                    .build());
+                    .totalAmount(new BigDecimal((i + 1) * 1000 * 100)) // 단순 계산
+                    .loadingAddress("주소 데이터 " + i)
+                    .loadingAddressDisplay(locations[i % locations.length])
+                    .status(Product.Status.selling)
+                    .approvedAt(java.time.LocalDateTime.now())
+                    .isDisplayed(true)
+                    .build();
+
+            productRepository.save(product);
+
+            // 이미지
+            ProductImage img1 = ProductImage.builder()
+                    .product(product)
+                    .imageUrl("https://placehold.co/600x400?text=" + product.getItemName())
+                    .displayOrder(1)
+                    .build();
+            productImageRepository.save(img1);
         }
-
-        // --- 유로폼 (Euroform) 상품들 ---
-        String[] euroSpecs = {"6012", "4012", "3012", "6009"};
-        String[] euroGrades = {"NEW", "SHORT_NEW", "USED"}; // 신재, 쇼트신재, 고재
-
-        for (int i = 0; i < 10; i++) {
-            String spec = euroSpecs[i % euroSpecs.length];
-            String gradeCode = euroGrades[i % 3];
-            String gradeName = gradeCode.equals("NEW") ? "신재" : (gradeCode.equals("SHORT_NEW") ? "쇼트신재" : "고재");
-
-            products.add(Product.builder()
-                    .categoryId(euroform.getId())
-                    .name("유로폼 " + spec + " (" + gradeName + ")")
-                    .price(new BigDecimal((i + 5) * 4000))
-                    .stockQuantity(500)
-                    .grade(gradeCode)
-                    .itemName("유로폼")
-                    .spec(spec)
-                    .minOrderQuantity(50)
-                    .description("현장에서 가장 많이 쓰이는 유로폼 " + spec + " 규격입니다.")
-                    .thumbnailUrl("https://placehold.co/400x300?text=Euroform+" + (i+1))
-                    .imageUrls(List.of("https://placehold.co/600x400?text=Euro+Front", "https://placehold.co/600x400?text=Euro+Back"))
-                    .build());
-        }
-
-        productRepository.saveAll(products);
     }
 }

@@ -1,10 +1,11 @@
 package com.example.ecommerce.service;
 
-import com.example.ecommerce.dto.MemberDTO;
-import com.example.ecommerce.dto.MemberUpdateRequest;
-import com.example.ecommerce.entity.Member;
-import com.example.ecommerce.mapper.MemberMapper;
-import com.example.ecommerce.repository.MemberRepository;
+import com.example.ecommerce.dto.UserDTO;
+import com.example.ecommerce.dto.UserUpdateRequest;
+import com.example.ecommerce.entity.BusinessProfile;
+import com.example.ecommerce.entity.User;
+import com.example.ecommerce.repository.BusinessProfileRepository;
+import com.example.ecommerce.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
@@ -14,47 +15,67 @@ import org.springframework.transaction.annotation.Transactional;
 @RequiredArgsConstructor
 @Transactional
 public class UserService {
-    private final MemberRepository memberRepository;
+    private final UserRepository userRepository;
+    private final BusinessProfileRepository businessProfileRepository;
     private final PasswordEncoder passwordEncoder;
-    private final MemberMapper memberMapper;
 
     @Transactional(readOnly = true)
-    public MemberDTO getMyInfo(String username) {
-        Member member = memberRepository.findByUsername(username)
+    public UserDTO getMyInfo(String username) {
+        User user = userRepository.findByUsername(username)
                 .orElseThrow(() -> new RuntimeException("사용자를 찾을 수 없습니다."));
-        return memberMapper.map(member);
+
+        // 메인 사업자 프로필 조회 (없을 수도 있음 - 가입 초기 등)
+        BusinessProfile mainProfile = businessProfileRepository.findByUserId(user.getId()).stream()
+                .filter(BusinessProfile::isMain)
+                .findFirst()
+                .orElse(null);
+
+        return UserDTO.builder()
+                .id(user.getId())
+                .username(user.getUsername())
+                .name(user.getName())
+                .representativePhone(user.getRepresentativePhone())
+                .email(user.getEmail())
+                .role(user.getRole())
+                .businessNumber(user.getBusinessNumber())
+                .isActive(user.isActive())
+                .createdAt(user.getCreatedAt())
+                .companyName(mainProfile != null ? mainProfile.getBusinessName() : null)
+                .officeAddress(mainProfile != null ? mainProfile.getOfficeAddress() : null)
+                .businessStatus(mainProfile != null ? mainProfile.getStatus().name() : null)
+                .build();
     }
 
-    public MemberDTO updateMyInfo(String username, MemberUpdateRequest request) {
-        Member member = memberRepository.findByUsername(username)
+    public UserDTO updateMyInfo(String username, UserUpdateRequest request) {
+        User user = userRepository.findByUsername(username)
                 .orElseThrow(() -> new RuntimeException("사용자를 찾을 수 없습니다."));
 
-        // 비밀번호 변경 요청이 있을 경우에만 변경
+        // 유저 기본 정보 수정
         if (request.getPassword() != null && !request.getPassword().isBlank()) {
-            member.setPassword(passwordEncoder.encode(request.getPassword()));
+            user.setPasswordHash(passwordEncoder.encode(request.getPassword()));
+        }
+        if (request.getName() != null)
+            user.setName(request.getName());
+        if (request.getRepresentativePhone() != null)
+            user.setRepresentativePhone(request.getRepresentativePhone());
+        if (request.getEmail() != null)
+            user.setEmail(request.getEmail());
+
+        // 사업자 정보 수정 (메인 프로필이 존재할 경우)
+        if (request.getCompanyName() != null || request.getOfficeAddress() != null) {
+            businessProfileRepository.findByUserId(user.getId()).stream()
+                    .filter(BusinessProfile::isMain)
+                    .findFirst()
+                    .ifPresent(profile -> {
+                        if (request.getCompanyName() != null)
+                            profile.setBusinessName(request.getCompanyName());
+                        if (request.getOfficeAddress() != null)
+                            profile.setOfficeAddress(request.getOfficeAddress());
+                        if (request.getStorageAddress() != null)
+                            profile.setStorageAddress(request.getStorageAddress());
+                    });
         }
 
-        // 정보 업데이트 (null이 아닌 경우에만 업데이트하거나, 전체 업데이트 정책에 따라 다름)
-        // 여기서는 null이 아니거나 빈 문자열이 아닌 경우 업데이트하는 방식 등으로 유연하게 처리
-        // 프론트엔드에서 값을 다 보내준다면 그냥 덮어씌워도 되지만, Patch 성격이 강하므로 null 체크
-
-        if (request.getPhone() != null)
-            member.setPhone(request.getPhone());
-        if (request.getCompanyName() != null)
-            member.setCompanyName(request.getCompanyName());
-        // 이메일은 선택사항이라 null로 업데이트 하고 싶을 수도 있음.
-        // 하지만 여기서는 입력된 값 위주로 업데이트.
-        // 프론트엔드에서 빈 문자열을 보내면 빈 문자열로 저장됨.
-        if (request.getEmail() != null)
-            member.setEmail(request.getEmail());
-        if (request.getBusinessNumber() != null)
-            member.setBusinessNumber(request.getBusinessNumber());
-        if (request.getBusinessAddress() != null)
-            member.setBusinessAddress(request.getBusinessAddress());
-        if (request.getYardAddress() != null)
-            member.setYardAddress(request.getYardAddress());
-
-        // Dirty Checking에 의해 트랜잭션 종료 시 update 쿼리 실행됨
-        return memberMapper.map(member);
+        return getMyInfo(username); // 수정된 정보 반환
     }
 }
