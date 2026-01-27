@@ -23,6 +23,7 @@ public class ProductService {
         private final ProductRepository productRepository;
         private final ProductImageRepository productImageRepository;
         private final BusinessProfileRepository businessProfileRepository;
+        private final com.example.ecommerce.mapper.ProductMapper productMapper;
 
         public List<ProductDTO> getAllProducts() {
                 return productRepository.findAll().stream()
@@ -70,24 +71,6 @@ public class ProductService {
                                 .map(BusinessProfile::getBusinessName)
                                 .orElse(product.getSeller().getName()); // 없으면 유저 이름
 
-                return ProductDTO.builder()
-                                .id(product.getId())
-                                .categoryId(product.getCategory().getId())
-                                .categoryName(product.getCategory().getName())
-                                .sellerId(product.getSeller().getId())
-                                .sellerName(sellerName)
-                                .itemName(product.getItemName())
-                                .itemCondition(product.getItemCondition())
-                                .unitPrice(product.getUnitPrice())
-                                .saleUnit(product.getSaleUnit())
-                                .stockQuantity(product.getStockQuantity())
-                                .totalAmount(product.getTotalAmount())
-                                .loadingAddress(product.getLoadingAddress())
-                                .loadingAddressDisplay(product.getLoadingAddressDisplay())
-                                .status(product.getStatus().name())
-                                .rejectionReason(product.getRejectionReason())
-                                .imageUrls(imageUrls)
-                                .createdAt(product.getCreatedAt())
-                                .build();
+                return productMapper.toDTO(product, sellerName, imageUrls);
         }
 }

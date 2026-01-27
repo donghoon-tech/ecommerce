@@ -18,6 +18,7 @@ public class UserService {
     private final UserRepository userRepository;
     private final BusinessProfileRepository businessProfileRepository;
     private final PasswordEncoder passwordEncoder;
+    private final com.example.ecommerce.mapper.UserMapper userMapper;
 
     @Transactional(readOnly = true)
     public UserDTO getMyInfo(String username) {
@@ -30,20 +31,7 @@ public class UserService {
                 .findFirst()
                 .orElse(null);
 
-        return UserDTO.builder()
-                .id(user.getId())
-                .username(user.getUsername())
-                .name(user.getName())
-                .representativePhone(user.getRepresentativePhone())
-                .email(user.getEmail())
-                .role(user.getRole())
-                .businessNumber(user.getBusinessNumber())
-                .isActive(user.isActive())
-                .createdAt(user.getCreatedAt())
-                .companyName(mainProfile != null ? mainProfile.getBusinessName() : null)
-                .officeAddress(mainProfile != null ? mainProfile.getOfficeAddress() : null)
-                .businessStatus(mainProfile != null ? mainProfile.getStatus().name() : null)
-                .build();
+        return userMapper.toDTO(user, mainProfile);
     }
 
     public UserDTO updateMyInfo(String username, UserUpdateRequest request) {

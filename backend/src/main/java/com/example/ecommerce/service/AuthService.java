@@ -18,6 +18,7 @@ public class AuthService {
     private final UserRepository userRepository;
     private final BusinessProfileRepository businessProfileRepository;
     private final PasswordEncoder passwordEncoder;
+    private final com.example.ecommerce.mapper.UserMapper userMapper;
 
     public UserDTO register(AuthController.RegisterRequest request) {
         if (userRepository.existsByUsername(request.getUsername())) {
@@ -37,6 +38,7 @@ public class AuthService {
                 .email(request.getEmail())
                 .role(User.Role.user)
                 .businessNumber(request.getBusinessNumber())
+                .isActive(true)
                 .build();
 
         // request에 name(대표자명) 필드가 없다면, 회원가입 폼을 수정해야 할 수도 있음.
@@ -67,15 +69,7 @@ public class AuthService {
         businessProfileRepository.save(profile);
 
         // 3. 반환
-        return UserDTO.builder()
-                .id(savedUser.getId())
-                .username(savedUser.getUsername())
-                .name(savedUser.getName())
-                .role(savedUser.getRole())
-                .businessNumber(savedUser.getBusinessNumber())
-                .companyName(profile.getBusinessName())
-                .businessStatus(profile.getStatus().name())
-                .build();
+        return userMapper.toDTO(savedUser, profile);
     }
 
     public String findId(String phone) {
