@@ -13,9 +13,13 @@ const isVerified = ref(false)
 const foundId = ref('')
 const errorMsg = ref('')
 
+// 상태 메시지 추가
+const phoneMsg = ref({ type: '', text: '' })
+const verificationMsg = ref({ type: '', text: '' })
+
 const requestVerification = async () => {
     if (!phone.value) {
-        alert('휴대폰 번호를 입력해주세요.')
+        phoneMsg.value = { type: 'error', text: '휴대폰 번호를 입력해주세요.' }
         return
     }
 
@@ -25,30 +29,32 @@ const requestVerification = async () => {
         })
 
         if (!res.data.exists) {
-            alert('해당 번호로 가입된 아이디가 없습니다.')
+            phoneMsg.value = { type: 'error', text: '해당 번호로 가입된 아이디가 없습니다.' }
             return
         }
 
         isVerificationSent.value = true
-        alert(`인증번호가 발송되었습니다. (테스트용: 아무 번호나 입력하세요)`)
+        phoneMsg.value = { type: 'info', text: '인증번호가 발송되었습니다. (테스트용: 아무 번호나 입력하세요)' }
+        verificationMsg.value = { type: '', text: '' } // 초기화
     } catch (e) {
         console.error(e)
-        alert('서버 통신 중 오류가 발생했습니다.')
+        phoneMsg.value = { type: 'error', text: '서버 통신 중 오류가 발생했습니다.' }
     }
 }
 
 const verifyCode = () => {
     if (!verificationCode.value) {
-        alert('인증번호를 입력해주세요.')
+        verificationMsg.value = { type: 'error', text: '인증번호를 입력해주세요.' }
         return
     }
     isVerified.value = true
-    alert('인증되었습니다.')
+    phoneMsg.value = { type: 'success', text: '인증이 완료되었습니다.' }
+    verificationMsg.value = { type: '', text: '' }
 }
 
 const handleFindId = async () => {
     if (!isVerified.value) {
-        alert('휴대폰 인증을 완료해주세요.')
+        errorMsg.value = '휴대폰 인증을 완료해주세요.'
         return
     }
 
@@ -101,22 +107,25 @@ const handleFindId = async () => {
               <div class="flex mt-1 gap-2">
                 <input v-model="phone" type="tel" :disabled="isVerified" class="block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm disabled:bg-gray-100" placeholder="- 없이 숫자만 입력">
                 <button type="button" @click="requestVerification" :disabled="isVerified" class="inline-flex justify-center py-2 px-4 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none disabled:bg-gray-400 whitespace-nowrap flex-shrink-0">
-                  인증요청
+                  {{ isVerificationSent ? '재전송' : '인증요청' }}
                 </button>
               </div>
+              <!-- 메시지 영역 -->
+              <p v-if="phoneMsg.text && !isVerified" class="mt-1 text-xs" :class="phoneMsg.type === 'error' ? 'text-red-600' : 'text-blue-600'">
+                  {{ phoneMsg.text }}
+              </p>
+              <p v-if="isVerified" class="mt-1 text-xs text-green-600">✓ 인증이 완료되었습니다.</p>
             </div>
 
             <!-- 인증 번호 확인 -->
-            <div v-if="isVerificationSent && !isVerified">
+            <div v-if="isVerificationSent && !isVerified && phoneMsg.type !== 'error'">
               <div class="flex mt-1 gap-2">
                 <input v-model="verificationCode" type="text" class="block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm" placeholder="인증번호 입력">
                 <button type="button" @click="verifyCode" class="inline-flex justify-center py-2 px-4 border border-gray-300 shadow-sm text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none whitespace-nowrap flex-shrink-0">
                   확인
                 </button>
               </div>
-            </div>
-            <div v-if="isVerified" class="text-sm text-green-600 font-medium">
-              ✓ 인증되었습니다.
+              <p v-if="verificationMsg.text" class="mt-1 text-xs text-red-600">{{ verificationMsg.text }}</p>
             </div>
         </div>
 
