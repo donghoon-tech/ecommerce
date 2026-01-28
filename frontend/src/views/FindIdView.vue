@@ -13,13 +13,28 @@ const isVerified = ref(false)
 const foundId = ref('')
 const errorMsg = ref('')
 
-const requestVerification = () => {
+const requestVerification = async () => {
     if (!phone.value) {
         alert('휴대폰 번호를 입력해주세요.')
         return
     }
-    isVerificationSent.value = true
-    alert(`인증번호가 발송되었습니다. (테스트용: 아무 번호나 입력하세요)`)
+
+    try {
+        const res = await axios.post(`${API_BASE_URL}/api/auth/check-phone`, {
+            phone: phone.value
+        })
+
+        if (!res.data.exists) {
+            alert('해당 번호로 가입된 아이디가 없습니다.')
+            return
+        }
+
+        isVerificationSent.value = true
+        alert(`인증번호가 발송되었습니다. (테스트용: 아무 번호나 입력하세요)`)
+    } catch (e) {
+        console.error(e)
+        alert('서버 통신 중 오류가 발생했습니다.')
+    }
 }
 
 const verifyCode = () => {

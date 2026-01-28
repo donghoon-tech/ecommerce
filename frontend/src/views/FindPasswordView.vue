@@ -14,13 +14,29 @@ const isVerified = ref(false)
 const tempPassword = ref('')
 const errorMsg = ref('')
 
-const requestVerification = () => {
+const requestVerification = async () => {
     if (!phone.value || !id.value) {
         alert('아이디와 휴대폰 번호를 모두 입력해주세요.')
         return
     }
-    isVerificationSent.value = true
-    alert(`인증번호가 발송되었습니다. (테스트용: 아무 번호나 입력하세요)`)
+
+    try {
+        const res = await axios.post(`${API_BASE_URL}/api/auth/check-user-phone`, {
+            username: id.value,
+            phone: phone.value
+        })
+
+        if (!res.data.exists) {
+            alert('입력하신 정보와 일치하는 회원을 찾을 수 없습니다.')
+            return
+        }
+
+        isVerificationSent.value = true
+        alert(`인증번호가 발송되었습니다. (테스트용: 아무 번호나 입력하세요)`)
+    } catch (e) {
+         console.error(e)
+         alert('서버 통신 중 오류가 발생했습니다.')
+    }
 }
 
 const verifyCode = () => {

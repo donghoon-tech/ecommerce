@@ -29,25 +29,31 @@ public class AuthController {
 
     @PostMapping("/login")
     public ResponseEntity<?> login(@RequestBody LoginRequest loginRequest) {
-        UsernamePasswordAuthenticationToken authenticationToken = new UsernamePasswordAuthenticationToken(
-                loginRequest.getUsername(), loginRequest.getPassword());
+        try {
+            UsernamePasswordAuthenticationToken authenticationToken = new UsernamePasswordAuthenticationToken(
+                    loginRequest.getUsername(), loginRequest.getPassword());
 
-        Authentication authentication = authenticationManager.authenticate(authenticationToken);
+            Authentication authentication = authenticationManager.authenticate(authenticationToken);
 
-        String username = authentication.getName();
-        String role = authentication.getAuthorities().stream()
-                .map(GrantedAuthority::getAuthority)
-                .findFirst()
-                .orElse("ROLE_USER");
+            String username = authentication.getName();
+            String role = authentication.getAuthorities().stream()
+                    .map(GrantedAuthority::getAuthority)
+                    .findFirst()
+                    .orElse("ROLE_USER");
 
-        String token = jwtTokenProvider.createToken(username, role);
+            String token = jwtTokenProvider.createToken(username, role);
 
-        Map<String, String> response = new HashMap<>();
-        response.put("token", token);
-        response.put("username", username);
-        response.put("role", role);
+            Map<String, String> response = new HashMap<>();
+            response.put("token", token);
+            response.put("username", username);
+            response.put("role", role);
 
-        return ResponseEntity.ok(response);
+            return ResponseEntity.ok(response);
+        } catch (org.springframework.security.authentication.BadCredentialsException e) {
+            return ResponseEntity.status(401).body(Map.of("message", "아이디 또는 비밀번호가 올바르지 않습니다."));
+        } catch (org.springframework.security.core.AuthenticationException e) {
+            return ResponseEntity.status(401).body(Map.of("message", "로그인에 실패했습니다."));
+        }
     }
 
     @PostMapping("/register")
@@ -59,6 +65,18 @@ public class AuthController {
     public ResponseEntity<Map<String, String>> findId(@RequestBody FindIdRequest request) {
         String username = authService.findId(request.getPhone());
         return ResponseEntity.ok(Map.of("username", username));
+    }
+
+    @PostMapping("/check-phone")
+    public ResponseEntity<Map<String, Boolean>> checkPhone(@RequestBody CheckPhoneRequest request) {
+        boolean exists = authService.checkPhoneExists(request.getPhone());
+        return ResponseEntity.ok(Map.of("exists", exists));
+    }
+
+    @PostMapping("/check-user-phone")
+    public ResponseEntity<Map<String, Boolean>> checkUserAndPhone(@RequestBody CheckUserPhoneRequest request) {
+        boolean exists = authService.checkUserAndPhoneExists(request.getUsername(), request.getPhone());
+        return ResponseEntity.ok(Map.of("exists", exists));
     }
 
     @PostMapping("/reset-password")
@@ -87,6 +105,17 @@ public class AuthController {
 
     @Data
     public static class FindIdRequest {
+        private String phone;
+    }
+
+    @Data
+    public static class CheckPhoneRequest {
+        private String phone;
+    }
+
+    @Data
+    public static class CheckUserPhoneRequest {
+        private String username;
         private String phone;
     }
 

@@ -28,6 +28,9 @@ public class DataInitializer implements CommandLineRunner {
         @Override
         @Transactional
         public void run(String... args) throws Exception {
+                // 기존 데이터 포맷 마이그레이션 (하이픈 제거)
+                fixPhoneNumberFormat();
+
                 if (userRepository.count() > 0) {
                         System.out.println("Data already initialized. Skipping...");
                         return;
@@ -45,6 +48,22 @@ public class DataInitializer implements CommandLineRunner {
                 createProducts(seller, categories);
 
                 System.out.println("Mock Data Initialization Completed!");
+        }
+
+        private void fixPhoneNumberFormat() {
+                List<User> users = userRepository.findAll();
+                boolean updated = false;
+                for (User user : users) {
+                        String phone = user.getRepresentativePhone();
+                        if (phone != null && phone.contains("-")) {
+                                user.setRepresentativePhone(phone.replaceAll("-", ""));
+                                updated = true;
+                        }
+                }
+                if (updated) {
+                        userRepository.saveAll(users);
+                        System.out.println("Migrated existing phone numbers to plain text format.");
+                }
         }
 
         private List<Category> createCategories() {
@@ -92,7 +111,7 @@ public class DataInitializer implements CommandLineRunner {
                                 .username("admin")
                                 .passwordHash(passwordEncoder.encode("admin1234"))
                                 .name("관리자")
-                                .representativePhone("010-0000-0000")
+                                .representativePhone("01000000000")
                                 .role(User.Role.admin)
                                 .businessNumber("000-00-00000")
                                 .build();
@@ -103,7 +122,7 @@ public class DataInitializer implements CommandLineRunner {
                                 .username("seller")
                                 .passwordHash(passwordEncoder.encode("seller1234"))
                                 .name("김판매")
-                                .representativePhone("010-1111-1111")
+                                .representativePhone("01011111111")
                                 .email("seller@example.com")
                                 .role(User.Role.user)
                                 .businessNumber("111-11-11111")
@@ -129,7 +148,7 @@ public class DataInitializer implements CommandLineRunner {
                                 .username("buyer")
                                 .passwordHash(passwordEncoder.encode("buyer1234"))
                                 .name("이구매")
-                                .representativePhone("010-2222-2222")
+                                .representativePhone("01022222222")
                                 .email("buyer@example.com")
                                 .role(User.Role.user)
                                 .businessNumber("222-22-22222")

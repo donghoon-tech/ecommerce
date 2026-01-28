@@ -24,7 +24,8 @@ public class AuthService {
         if (userRepository.existsByUsername(request.getUsername())) {
             throw new RuntimeException("이미 존재하는 아이디입니다.");
         }
-        if (userRepository.existsByRepresentativePhone(request.getPhone())) {
+        String normalizedPhone = normalizePhone(request.getPhone());
+        if (userRepository.existsByRepresentativePhone(normalizedPhone)) {
             throw new RuntimeException("이미 가입된 전화번호입니다.");
         }
 
@@ -34,7 +35,7 @@ public class AuthService {
                 .passwordHash(passwordEncoder.encode(request.getPassword()))
                 .name(request.getCompanyName()) // 초기값: 상호명을 이름으로 사용? or 별도 이름 필드 필요? (일단 DTO 확인 필요) -> 아 request 필드 보니
                                                 // name이 없었음.
-                .representativePhone(request.getPhone())
+                .representativePhone(normalizedPhone)
                 .email(request.getEmail())
                 .role(User.Role.user)
                 .businessNumber(request.getBusinessNumber())
@@ -73,20 +74,37 @@ public class AuthService {
     }
 
     public String findId(String phone) {
-        return userRepository.findByRepresentativePhone(phone)
+        return userRepository.findByRepresentativePhone(normalizePhone(phone))
                 .map(User::getUsername)
                 .orElseThrow(() -> new RuntimeException("해당 번호로 가입된 아이디가 없습니다."));
     }
 
+    public boolean checkPhoneExists(String phone) {
+        return userRepository.existsByRepresentativePhone(normalizePhone(phone));
+    }
+
+    public boolean checkUserAndPhoneExists(String username, String phone) {
+        String cleanInputPhone = normalizePhone(phone);
+        return userRepository.findByUsername(username)
+                .map(u -> {
+                    String cleanUserPhone = normalizePhone(u.getRepresentativePhone());
+                    return cleanUserPhone.equals(cleanInputPhone);
+                })
+                .orElse(false);
+    }
+
     public String resetPassword(String username, String phone) {
+        String cleanInputPhone = normalizePhone(phone);
         User user = userRepository.findByUsername(username)
-                .filter(u -> u.getRepresentativePhone().equals(phone))
+                .filter(u -> {
+                    String cleanUserPhone = normalizePhone(u.getRepresentativePhone());
+                    return cleanUserPhone.equals(cleanInputPhone);
+                })
                 .orElseThrow(() -> new RuntimeException("일치하는 회원 정보가 없습니다."));
 
         String tempPassword = generateRandomPassword();
         user.setPasswordHash(passwordEncoder.encode(tempPassword));
         // Dirty Checking
-
         return tempPassword;
     }
 
@@ -98,5 +116,11 @@ public class AuthService {
             sb.append(chars.charAt(index));
         }
         return sb.toString();
+    }
+
+    private String normalizePhone(String phone) {
+        if (phone == null)
+            return null;
+        return phone.replaceAll("[^0-9]", "");
     }
 }
