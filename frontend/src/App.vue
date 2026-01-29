@@ -39,6 +39,7 @@ onMounted(() => {
          <div class="flex items-center space-x-8">
            <router-link to="/" class="text-2xl font-bold text-indigo-600">가설라인</router-link>
            <router-link to="/" class="text-gray-600 hover:text-indigo-600 font-semibold transition">상품목록</router-link>
+           <router-link to="/product/register" class="text-gray-600 hover:text-indigo-600 font-semibold transition">상품등록</router-link>
          </div>
          <div class="flex items-center space-x-6">
            <template v-if="!isLoggedIn">
