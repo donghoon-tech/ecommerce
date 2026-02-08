@@ -183,14 +183,12 @@ const handleUpdate = async () => {
 
       successMsg.value = '정보가 성공적으로 수정되었습니다.'
       
-      // 비밀번호가 변경되었으면 로그아웃 처리
+      // 스크롤 최상단으로 이동
+      window.scrollTo({ top: 0, behavior: 'smooth' })
+      
+      // 비밀번호가 변경되었어도 로그아웃 하지 않음
       if (isChangingPassword.value && form.value.password) {
-         alert('비밀번호가 변경되었습니다. 다시 로그인해주세요.')
-         localStorage.removeItem('token')
-         localStorage.removeItem('username')
-         localStorage.removeItem('role')
-         router.push('/login')
-         return
+         // alert('비밀번호가 변경되었습니다.') // 선택적: 명시적 알림이 필요하면 추가
       }
       
       togglePasswordChange(false)
