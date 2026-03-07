@@ -11,7 +11,10 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
 import java.util.ArrayList;
+import java.math.BigDecimal;
+import java.util.ArrayList;
 import java.util.List;
+import java.util.Optional;
 
 @Component
 @RequiredArgsConstructor
@@ -31,21 +34,16 @@ public class DataInitializer implements CommandLineRunner {
                 // 기존 데이터 포맷 마이그레이션 (하이픈 제거)
                 fixPhoneNumberFormat();
 
-                if (userRepository.count() > 0) {
-                        System.out.println("Data already initialized. Skipping...");
-                        return;
-                }
-
                 System.out.println("Initializing Mock Data...");
 
-                // 1. 카테고리 생성
+                // 1. 카테고리 생성 (존재하면 스킵)
                 List<Category> categories = createCategories();
 
-                // 2. 유저 생성 (Admin, Seller, Buyer)
-                User seller = createUsers();
+                // 2. 유저 생성 (Admin, Seller, Buyer) -> 없으면 생성
+                List<User> sellers = createUsers();
 
-                // 3. 상품 생성 (Seller가 등록)
-                createProducts(seller, categories);
+                // 3. 상품 생성 (Seller들이 등록) -> 없으면 생성
+                createProducts(sellers, categories);
 
                 System.out.println("Mock Data Initialization Completed!");
         }
@@ -67,6 +65,10 @@ public class DataInitializer implements CommandLineRunner {
         }
 
         private List<Category> createCategories() {
+                if (categoryRepository.count() > 0) {
+                        return categoryRepository.findAll();
+                }
+
                 List<Category> list = new ArrayList<>();
 
                 // 1. 가설재 (Root)
@@ -105,90 +107,199 @@ public class DataInitializer implements CommandLineRunner {
                 return list; // 2depth 카테고리들 반환
         }
 
-        private User createUsers() {
+        private List<User> createUsers() {
+                List<User> sellers = new ArrayList<>();
+
                 // 1. Admin
-                User admin = User.builder()
-                                .username("admin")
-                                .passwordHash(passwordEncoder.encode("admin1234"))
-                                .name("관리자")
-                                .representativePhone("01000000000")
-                                .role(User.Role.admin)
-                                .businessNumber("000-00-00000")
-                                .build();
-                userRepository.save(admin);
+                if (userRepository.findByUsername("admin").isEmpty()) {
+                        User admin = User.builder()
+                                        .username("admin")
+                                        .passwordHash(passwordEncoder.encode("admin1234"))
+                                        .name("관리자")
+                                        .representativePhone("01000000000")
+                                        .role(User.Role.admin)
+                                        .businessNumber("000-00-00000")
+                                        .build();
+                        userRepository.save(admin);
+                }
+                Optional<User> adminOptional = userRepository.findByUsername("admin");
+                User admin = adminOptional.orElse(null); // Get admin if exists, otherwise null
 
-                // 2. Seller (판매자)
-                User seller = User.builder()
-                                .username("seller")
-                                .passwordHash(passwordEncoder.encode("seller1234"))
-                                .name("김판매")
-                                .representativePhone("01011111111")
-                                .email("seller@example.com")
-                                .role(User.Role.user)
-                                .businessNumber("111-11-11111")
-                                .build();
-                userRepository.save(seller);
+                // 2. Seller 1 (대박자재)
+                User seller1 = userRepository.findByUsername("seller").orElseGet(() -> {
+                        User newSeller = User.builder()
+                                        .username("seller")
+                                        .passwordHash(passwordEncoder.encode("seller1234"))
+                                        .name("김판매")
+                                        .representativePhone("01011111111")
+                                        .email("seller@example.com")
+                                        .role(User.Role.user)
+                                        .businessNumber("111-11-11111")
+                                        .build();
+                        userRepository.save(newSeller);
 
-                BusinessProfile sellerProfile = BusinessProfile.builder()
-                                .user(seller)
-                                .businessName("대박자재")
-                                .businessNumber("111-11-11111")
-                                .representativeName("김판매")
-                                .officeAddress("서울시 강남구")
-                                .storageAddress("경기도 하남시 천현동")
-                                .status(BusinessProfile.Status.approved)
-                                .isMain(true)
-                                .approvedAt(java.time.LocalDateTime.now())
-                                .approvedBy(admin)
-                                .build();
-                businessProfileRepository.save(sellerProfile);
+                        // Profile 생성 (사용자가 새로 생성되었을 때만)
+                        BusinessProfile profile = BusinessProfile.builder()
+                                        .user(newSeller)
+                                        .businessName("대박자재")
+                                        .businessNumber("111-11-11111")
+                                        .representativeName("김판매")
+                                        .officeAddress("서울시 강남구")
+                                        .storageAddress("경기도 하남시 천현동")
+                                        .status(BusinessProfile.Status.approved)
+                                        .isMain(true)
+                                        .approvedAt(java.time.LocalDateTime.now())
+                                        .approvedBy(admin) // approvedBy는 생략하거나 조회해서 넣어야 함
+                                        .build();
+                        businessProfileRepository.save(profile);
+                        return newSeller;
+                });
+                sellers.add(seller1);
+
+                // 2. Seller 2 (형제건설)
+                User seller2 = userRepository.findByUsername("seller2").orElseGet(() -> {
+                        User newSeller = User.builder()
+                                        .username("seller2")
+                                        .passwordHash(passwordEncoder.encode("seller1234"))
+                                        .name("이형제")
+                                        .representativePhone("01012345678")
+                                        .email("seller2@example.com")
+                                        .role(User.Role.user)
+                                        .businessNumber("222-22-22222")
+                                        .build();
+                        userRepository.save(newSeller);
+
+                        BusinessProfile profile = BusinessProfile.builder()
+                                        .user(newSeller)
+                                        .businessName("형제건설")
+                                        .businessNumber("222-22-22222")
+                                        .representativeName("이형제")
+                                        .officeAddress("경기도 성남시")
+                                        .storageAddress("경기도 광주시")
+                                        .status(BusinessProfile.Status.approved)
+                                        .isMain(true)
+                                        .approvedAt(java.time.LocalDateTime.now())
+                                        .approvedBy(admin)
+                                        .build();
+                        businessProfileRepository.save(profile);
+                        return newSeller;
+                });
+                sellers.add(seller2);
+
+                // 2. Seller 3 (서울자재)
+                User seller3 = userRepository.findByUsername("seller3").orElseGet(() -> {
+                        User newSeller = User.builder()
+                                        .username("seller3")
+                                        .passwordHash(passwordEncoder.encode("seller1234"))
+                                        .name("박서울")
+                                        .representativePhone("01087654321")
+                                        .email("seller3@example.com")
+                                        .role(User.Role.user)
+                                        .businessNumber("333-33-33333")
+                                        .build();
+                        userRepository.save(newSeller);
+
+                        BusinessProfile profile = BusinessProfile.builder()
+                                        .user(newSeller)
+                                        .businessName("서울자재")
+                                        .businessNumber("333-33-33333")
+                                        .representativeName("박서울")
+                                        .officeAddress("서울시 송파구")
+                                        .storageAddress("경기도 남양주시")
+                                        .status(BusinessProfile.Status.approved)
+                                        .isMain(true)
+                                        .approvedAt(java.time.LocalDateTime.now())
+                                        .approvedBy(admin)
+                                        .build();
+                        businessProfileRepository.save(profile);
+                        return newSeller;
+                });
+                sellers.add(seller3);
 
                 // 3. Buyer (구매자)
-                User buyer = User.builder()
-                                .username("buyer")
-                                .passwordHash(passwordEncoder.encode("buyer1234"))
-                                .name("이구매")
-                                .representativePhone("01022222222")
-                                .email("buyer@example.com")
-                                .role(User.Role.user)
-                                .businessNumber("222-22-22222")
-                                .build();
-                userRepository.save(buyer);
+                if (userRepository.findByUsername("buyer").isEmpty()) {
+                        User buyer = User.builder()
+                                        .username("buyer")
+                                        .passwordHash(passwordEncoder.encode("buyer1234"))
+                                        .name("최구매")
+                                        .representativePhone("01022222222")
+                                        .email("buyer@example.com")
+                                        .role(User.Role.user)
+                                        .businessNumber("444-44-44444")
+                                        .build();
+                        userRepository.save(buyer);
 
-                BusinessProfile buyerProfile = BusinessProfile.builder()
-                                .user(buyer)
-                                .businessName("튼튼건설")
-                                .businessNumber("222-22-22222")
-                                .representativeName("이구매")
-                                .officeAddress("부산시 해운대구")
-                                .status(BusinessProfile.Status.approved) // 승인 완료 가정
-                                .isMain(true)
-                                .approvedAt(java.time.LocalDateTime.now())
-                                .approvedBy(admin)
-                                .build();
-                businessProfileRepository.save(buyerProfile);
+                        BusinessProfile buyerProfile = BusinessProfile.builder()
+                                        .user(buyer)
+                                        .businessName("튼튼건설")
+                                        .businessNumber("444-44-44444")
+                                        .representativeName("최구매")
+                                        .officeAddress("부산시 해운대구")
+                                        .status(BusinessProfile.Status.approved) // 승인 완료 가정
+                                        .isMain(true)
+                                        .approvedAt(java.time.LocalDateTime.now())
+                                        .approvedBy(admin)
+                                        .build();
+                        businessProfileRepository.save(buyerProfile);
+                }
 
-                return seller;
+                // 4. Pending User (가입 대기 중)
+                if (userRepository.findByUsername("pending_user").isEmpty()) {
+                        User pendingUser = User.builder()
+                                        .username("pending_user")
+                                        .passwordHash(passwordEncoder.encode("user1234"))
+                                        .name("정대기")
+                                        .representativePhone("01033333333")
+                                        .email("pending@example.com")
+                                        .role(User.Role.user)
+                                        .businessNumber("555-55-55555")
+                                        .build();
+                        userRepository.save(pendingUser);
+
+                        BusinessProfile pendingProfile = BusinessProfile.builder()
+                                        .user(pendingUser)
+                                        .businessName("신규자재")
+                                        .businessNumber("555-55-55555")
+                                        .representativeName("정대기")
+                                        .officeAddress("인천시 남동구")
+                                        .storageAddress("인천시 서구")
+                                        .status(BusinessProfile.Status.pending) // 대기 중
+                                        .isMain(true)
+                                        .build();
+                        businessProfileRepository.save(pendingProfile);
+                }
+
+                return sellers;
         }
 
-        private void createProducts(User seller, List<Category> categories) {
-                String[] locations = { "경기도 하남시", "충청북도 음성군", "경상북도 경산시" };
+        private void createProducts(List<User> sellers, List<Category> categories) {
+                String[] locations = { "경기도 하남시", "충청북도 음성군", "경상북도 경산시", "경기도 광주시", "경기도 남양주시" };
+                String[] conditions = { "신재", "고재" };
 
-                for (int i = 0; i < 20; i++) {
+                // Randomly distribute ~30 products among sellers
+                for (int i = 0; i < 30; i++) {
                         Category category = categories.get(i % categories.size()); // 랜덤 카테고리
-                        String condition = (i % 2 == 0) ? "신재" : "고재";
+                        User seller = sellers.get(i % sellers.size()); // 랜덤 판매자 (순환)
+
+                        // 해당 판매자가 이미 상품을 가지고 있다면 스킵 (중복 생성 방지 - 단순화된 로직)
+                        if (productRepository.countBySellerId(seller.getId()) > 5) { // 5개 이상이면 충분하다고 판단
+                                continue;
+                        }
+
+                        String condition = conditions[i % conditions.length];
 
                         Product product = Product.builder()
                                         .seller(seller)
                                         .category(category)
-                                        .itemName(category.getName() + " " + condition + " 상품-" + i)
+                                        .itemName(category.getName() + " " + condition + " 상품-" + i + " ("
+                                                        + seller.getName() + ")")
                                         .itemCondition(condition) // 신재/고재
+                                        .loadingAddress("주소 데이터 " + i)
+                                        .loadingAddressDisplay(locations[i % locations.length])
                                         .unitPrice(new BigDecimal((i + 1) * 1000))
                                         .saleUnit("개")
                                         .stockQuantity(100 + i * 10)
                                         .totalAmount(new BigDecimal((i + 1) * 1000 * 100)) // 단순 계산
-                                        .loadingAddress("주소 데이터 " + i)
-                                        .loadingAddressDisplay(locations[i % locations.length])
                                         .status(Product.Status.selling)
                                         .approvedAt(java.time.LocalDateTime.now())
                                         .isDisplayed(true)
