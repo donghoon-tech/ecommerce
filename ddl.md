@@ -4,18 +4,49 @@
 CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
 
 -- ============================================================
--- 사용자 관련 테이블
+-- 1. 권한 및 역할 관리 (RBAC Core)
 -- ============================================================
 
--- 사용자 테이블
+-- 권한 마스터 테이블: 시스템에서 정의한 최소 기능 단위
+CREATE TABLE permissions (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    name VARCHAR(50) NOT NULL UNIQUE,
+    description TEXT,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+COMMENT ON TABLE permissions IS '권한 마스터 (예: MENU:ADMIN, ACTION:TRADE 등)';
+
+-- 역할 테이블: 권한들의 묶음 (미인증회원, 정회원, 운영자 등)
+CREATE TABLE roles (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    name VARCHAR(50) NOT NULL UNIQUE,
+    description TEXT,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+COMMENT ON TABLE roles IS '사용자 역할 (예: UNVERIFIED, USER, ADMIN)';
+
+-- 역할별 권한 매핑 테이블 (N:M)
+CREATE TABLE role_permissions (
+    role_id UUID NOT NULL REFERENCES roles(id) ON DELETE CASCADE,
+    permission_id UUID NOT NULL REFERENCES permissions(id) ON DELETE CASCADE,
+    PRIMARY KEY (role_id, permission_id)
+);
+
+-- ============================================================
+-- 2. 사용자 관련 테이블
+-- ============================================================
+
+-- 사용자 테이블 (기존 role ENUM 삭제 후 role_id FK 도입)
 CREATE TABLE users (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    role_id UUID NOT NULL REFERENCES roles(id), -- RBAC 역할 참조
     username VARCHAR(50) NOT NULL UNIQUE,
     password_hash TEXT NOT NULL,
     name VARCHAR(100) NOT NULL,
     representative_phone VARCHAR(20) NOT NULL UNIQUE,
     email VARCHAR(255),
-    role VARCHAR(20) NOT NULL DEFAULT 'user' CHECK (role IN ('admin', 'user')),
     business_number VARCHAR(20) NOT NULL,
     is_active BOOLEAN NOT NULL DEFAULT true,
     phone_verified_at TIMESTAMPTZ,
@@ -25,20 +56,11 @@ CREATE TABLE users (
     updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
-COMMENT ON TABLE users IS '사용자 테이블';
-COMMENT ON COLUMN users.username IS '로그인 ID';
-COMMENT ON COLUMN users.representative_phone IS '대표 연락처 (인증 필수, 아이디 찾기용)';
-COMMENT ON COLUMN users.business_number IS '사업자등록번호 (회원가입 시 필수)';
-COMMENT ON COLUMN users.role IS 'admin: 운영자, user: 일반 사용자';
-
+CREATE INDEX idx_users_role_id ON users(role_id);
 CREATE INDEX idx_users_phone ON users(representative_phone);
 CREATE INDEX idx_users_username ON users(username);
-CREATE INDEX idx_users_business_number ON users(business_number);
 
--- ============================================================
 -- 사업자 프로필 테이블
--- ============================================================
-
 CREATE TABLE business_profiles (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
@@ -57,18 +79,10 @@ CREATE TABLE business_profiles (
     updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
-COMMENT ON TABLE business_profiles IS '사업자 프로필 (한 사용자가 여러 사업자 등록 가능)';
-COMMENT ON COLUMN business_profiles.status IS 'pending: 대기, approved: 승인, rejected: 반려';
-COMMENT ON COLUMN business_profiles.is_main IS '주 사업자 여부';
-
 CREATE INDEX idx_business_profiles_user_id ON business_profiles(user_id);
 CREATE INDEX idx_business_profiles_status ON business_profiles(status);
-CREATE INDEX idx_business_profiles_business_number ON business_profiles(business_number);
 
--- ============================================================
 -- 배송지 관리 테이블
--- ============================================================
-
 CREATE TABLE delivery_addresses (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
@@ -82,15 +96,8 @@ CREATE TABLE delivery_addresses (
     updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
-COMMENT ON TABLE delivery_addresses IS '배송지 주소록 (사용자 편의 기능)';
-COMMENT ON COLUMN delivery_addresses.address_name IS '배송지 별칭 (예: 본사, 1호 현장 등)';
-COMMENT ON COLUMN delivery_addresses.full_address IS '지도 API를 통해 입력된 주소';
-COMMENT ON COLUMN delivery_addresses.is_default IS '기본 배송지 여부';
-
-CREATE INDEX idx_delivery_addresses_user_id ON delivery_addresses(user_id);
-
 -- ============================================================
--- 카테고리 테이블
+-- 3. 상품 및 카테고리 (비즈니스 로직)
 -- ============================================================
 
 CREATE TABLE categories (
@@ -101,17 +108,6 @@ CREATE TABLE categories (
     display_order INT NOT NULL DEFAULT 0,
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
-
-COMMENT ON TABLE categories IS '상품 카테고리 (3단계: 구분 > 품목 > 규격)';
-COMMENT ON COLUMN categories.depth IS '0: 구분, 1: 품목, 2: 규격';
-COMMENT ON COLUMN categories.parent_id IS '상위 카테고리 ID (depth 0은 NULL)';
-
-CREATE INDEX idx_categories_parent_id ON categories(parent_id);
-CREATE INDEX idx_categories_depth ON categories(depth);
-
--- ============================================================
--- 상품 테이블
--- ============================================================
 
 CREATE TABLE products (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
@@ -134,22 +130,6 @@ CREATE TABLE products (
     updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
-COMMENT ON TABLE products IS '상품 테이블';
-COMMENT ON COLUMN products.item_condition IS '상품 상태: 신재, 고재';
-COMMENT ON COLUMN products.sale_unit IS '판매 단위 (참고용)';
-COMMENT ON COLUMN products.loading_address IS '상차지 전체 주소 (지도 API)';
-COMMENT ON COLUMN products.loading_address_display IS '상차지 노출용 주소 (시/구 단위)';
-COMMENT ON COLUMN products.status IS 'pending: 승인대기, approved: 승인완료, rejected: 반려, selling: 판매중, sold_out: 품절';
-
-CREATE INDEX idx_products_seller_id ON products(seller_id);
-CREATE INDEX idx_products_category_id ON products(category_id);
-CREATE INDEX idx_products_status ON products(status);
-CREATE INDEX idx_products_is_displayed ON products(is_displayed);
-
--- ============================================================
--- 상품 이미지 테이블
--- ============================================================
-
 CREATE TABLE product_images (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     product_id UUID NOT NULL REFERENCES products(id) ON DELETE CASCADE,
@@ -158,12 +138,8 @@ CREATE TABLE product_images (
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
-COMMENT ON TABLE product_images IS '상품 이미지 (최소 3장 이상)';
-
-CREATE INDEX idx_product_images_product_id ON product_images(product_id);
-
 -- ============================================================
--- 장바구니 테이블
+-- 4. 주문 및 장바구니
 -- ============================================================
 
 CREATE TABLE cart_items (
@@ -176,16 +152,6 @@ CREATE TABLE cart_items (
     updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     UNIQUE(user_id, product_id)
 );
-
-COMMENT ON TABLE cart_items IS '장바구니 (동일 판매자 상품만 담기 가능)';
-COMMENT ON COLUMN cart_items.seller_id IS '판매자 ID (동일 판매자 제약 체크용)';
-
-CREATE INDEX idx_cart_items_user_id ON cart_items(user_id);
-CREATE INDEX idx_cart_items_seller_id ON cart_items(seller_id);
-
--- ============================================================
--- 주문 테이블
--- ============================================================
 
 CREATE TABLE orders (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
@@ -210,23 +176,6 @@ CREATE TABLE orders (
     updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
-COMMENT ON TABLE orders IS '주문 테이블';
-COMMENT ON COLUMN orders.order_type IS 'platform: 플랫폼 주문, phone: 전화 주문';
-COMMENT ON COLUMN orders.shipping_loading_address IS '상차지 주소 (스냅샷)';
-COMMENT ON COLUMN orders.shipping_unloading_address IS '하차지 주소 (스냅샷)';
-COMMENT ON COLUMN orders.status IS 'pending: 대기, shipping: 배송중, delivered: 배송완료, completed: 거래완료';
-COMMENT ON COLUMN orders.payment_status IS 'pending: 입금대기, confirmed: 입금확인, settled: 정산완료';
-
-CREATE INDEX idx_orders_buyer_id ON orders(buyer_id);
-CREATE INDEX idx_orders_seller_id ON orders(seller_id);
-CREATE INDEX idx_orders_status ON orders(status);
-CREATE INDEX idx_orders_payment_status ON orders(payment_status);
-CREATE INDEX idx_orders_created_at ON orders(created_at);
-
--- ============================================================
--- 주문 항목 테이블
--- ============================================================
-
 CREATE TABLE order_items (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     order_id UUID NOT NULL REFERENCES orders(id) ON DELETE CASCADE,
@@ -239,19 +188,6 @@ CREATE TABLE order_items (
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
-COMMENT ON TABLE order_items IS '주문 항목 (주문 당시 상품 정보 스냅샷)';
-COMMENT ON COLUMN order_items.product_name_snapshot IS '주문 시점 상품명';
-COMMENT ON COLUMN order_items.product_condition_snapshot IS '주문 시점 상품 상태';
-COMMENT ON COLUMN order_items.price_snapshot IS '주문 시점 단가';
-COMMENT ON COLUMN order_items.subtotal IS '소계 (price_snapshot * quantity)';
-
-CREATE INDEX idx_order_items_order_id ON order_items(order_id);
-CREATE INDEX idx_order_items_product_id ON order_items(product_id);
-
--- ============================================================
--- 주문 이미지 테이블
--- ============================================================
-
 CREATE TABLE order_images (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     order_id UUID NOT NULL REFERENCES orders(id) ON DELETE CASCADE,
@@ -261,13 +197,8 @@ CREATE TABLE order_images (
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
-COMMENT ON TABLE order_images IS '주문 관련 이미지 (상차/배송 사진)';
-COMMENT ON COLUMN order_images.image_type IS 'loading: 상차 사진, delivery: 배송 사진';
-
-CREATE INDEX idx_order_images_order_id ON order_images(order_id);
-
 -- ============================================================
--- 알림 테이블
+-- 5. 알림 서비스
 -- ============================================================
 
 CREATE TABLE notifications (
@@ -282,16 +213,8 @@ CREATE TABLE notifications (
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
-COMMENT ON TABLE notifications IS '알림 테이블';
-COMMENT ON COLUMN notifications.type IS '알림 유형 (delivery_start, payment_confirm, approval 등)';
-COMMENT ON COLUMN notifications.channel IS 'sms: 문자, email: 이메일';
-
-CREATE INDEX idx_notifications_user_id ON notifications(user_id);
-CREATE INDEX idx_notifications_status ON notifications(status);
-CREATE INDEX idx_notifications_created_at ON notifications(created_at);
-
 -- ============================================================
--- 트리거: updated_at 자동 업데이트
+-- 6. 트리거: updated_at 자동 업데이트
 -- ============================================================
 
 CREATE OR REPLACE FUNCTION update_updated_at_column()
@@ -302,20 +225,41 @@ BEGIN
 END;
 $$ language 'plpgsql';
 
-CREATE TRIGGER update_users_updated_at BEFORE UPDATE ON users
-    FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+CREATE TRIGGER update_users_updated_at BEFORE UPDATE ON users FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+CREATE TRIGGER update_business_profiles_updated_at BEFORE UPDATE ON business_profiles FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+CREATE TRIGGER update_delivery_addresses_updated_at BEFORE UPDATE ON delivery_addresses FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+CREATE TRIGGER update_products_updated_at BEFORE UPDATE ON products FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+CREATE TRIGGER update_cart_items_updated_at BEFORE UPDATE ON cart_items FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+CREATE TRIGGER update_orders_updated_at BEFORE UPDATE ON orders FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
 
-CREATE TRIGGER update_business_profiles_updated_at BEFORE UPDATE ON business_profiles
-    FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+-- ============================================================
+-- 7. 초기 시드 데이터 (권한 및 역할)
+-- ============================================================
 
-CREATE TRIGGER update_delivery_addresses_updated_at BEFORE UPDATE ON delivery_addresses
-    FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+-- 1) 퍼미션 삽입
+INSERT INTO permissions (name, description) VALUES 
+('PRODUCT:READ', '상품 조회'),
+('PRODUCT:UPDATE', '상품 등록/수정'),
+('ORDER:CREATE', '주문'),
+('ORDER:UPDATE', '주문 취소/수정'),
+('USER:ACCESS', '사용자 관리 (관리자용 - 가입 승인/거부, 사용자 조회 등)'),
+('AUTH:ACCESS', '인증 관리 (관리자용 - 역할 및 권한 매핑 관리 등)');
 
-CREATE TRIGGER update_products_updated_at BEFORE UPDATE ON products
-    FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+-- 2) 역할 생성
+INSERT INTO roles (id, name, description) VALUES 
+('00000000-0000-0000-0000-000000000001', 'UNVERIFIED', '미인증 회원 (조회만 가능)'),
+('00000000-0000-0000-0000-000000000002', 'USER', '인증 회원 (구매/판매 가능)'),
+('00000000-0000-0000-0000-000000000003', 'ADMIN', '운영자 (모든 권한)');
 
-CREATE TRIGGER update_cart_items_updated_at BEFORE UPDATE ON cart_items
-    FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+-- 3) 역할별 권한 매핑
+-- 미인증 회원: 상품 목록만
+INSERT INTO role_permissions (role_id, permission_id) 
+SELECT r.id, p.id FROM roles r, permissions p WHERE r.name = 'UNVERIFIED' AND p.name = 'PRODUCT:READ';
 
-CREATE TRIGGER update_orders_updated_at BEFORE UPDATE ON orders
-    FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+-- 인증 회원: 상품 목록 + 거래(구매/판매)
+INSERT INTO role_permissions (role_id, permission_id) 
+SELECT r.id, p.id FROM roles r, permissions p WHERE r.name = 'USER' AND p.name IN ('PRODUCT:READ', 'PRODUCT:UPDATE', 'ORDER:CREATE', 'ORDER:UPDATE');
+
+-- 운영자: 전체
+INSERT INTO role_permissions (role_id, permission_id) 
+SELECT r.id, p.id FROM roles r, permissions p WHERE r.name = 'ADMIN';
