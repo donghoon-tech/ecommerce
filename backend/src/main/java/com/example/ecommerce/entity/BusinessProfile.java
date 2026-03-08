@@ -22,16 +22,16 @@ public class BusinessProfile {
     @JoinColumn(name = "user_id", nullable = false)
     private User user;
 
-    @Column(name = "business_name", nullable = false, length = 200)
+    @Column(name = "business_name", nullable = true, length = 200)
     private String businessName;
 
-    @Column(name = "business_number", nullable = false, length = 20)
+    @Column(name = "business_number", nullable = true, length = 20)
     private String businessNumber;
 
-    @Column(name = "representative_name", nullable = false, length = 100)
+    @Column(name = "representative_name", nullable = true, length = 100)
     private String representativeName;
 
-    @Column(name = "office_address", nullable = false, columnDefinition = "TEXT")
+    @Column(name = "office_address", nullable = true, columnDefinition = "TEXT")
     private String officeAddress;
 
     @Column(name = "storage_address", columnDefinition = "TEXT")

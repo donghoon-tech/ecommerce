@@ -24,7 +24,7 @@ public class User {
     @Column(name = "password_hash", nullable = false)
     private String passwordHash;
 
-    @Column(nullable = false, length = 100)
+    @Column(nullable = true, length = 100)
     private String name;
 
     @Column(name = "representative_phone", nullable = false, unique = true, length = 20)
@@ -36,7 +36,7 @@ public class User {
     @JoinColumn(name = "role_id", nullable = false)
     private Role role;
 
-    @Column(name = "business_number", nullable = false, length = 20)
+    @Column(name = "business_number", nullable = true, length = 20)
     private String businessNumber;
 
     @Column(name = "is_active", nullable = false)
