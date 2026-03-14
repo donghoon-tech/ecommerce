@@ -1,44 +1,26 @@
 <script setup lang="ts">
 import { RouterView } from 'vue-router'
-import { ref, onMounted } from 'vue'
+import { onMounted } from 'vue'
+import { useAuthStore } from './stores/auth'
+import api from './utils/api'
 
-const isLoggedIn = ref(false)
-const username = ref('')
-const userPermissions = ref<string[]>([])
+const authStore = useAuthStore()
 
-const checkLoginStatus = () => {
-  const token = localStorage.getItem('token')
-  const storedUsername = localStorage.getItem('username')
-  const storedPermissions = localStorage.getItem('permissions')
-  
-  if (token) {
-    isLoggedIn.value = true
-    username.value = storedUsername || '사용자'
-    try {
-      userPermissions.value = storedPermissions ? JSON.parse(storedPermissions) : []
-    } catch (e) {
-      userPermissions.value = []
-    }
-  } else {
-    isLoggedIn.value = false
-    username.value = ''
-    userPermissions.value = []
-  }
-}
-
-const handleLogout = () => {
+const handleLogout = async () => {
   if (confirm('로그아웃 하시겠습니까?')) {
-    localStorage.removeItem('token')
-    localStorage.removeItem('username')
-    localStorage.removeItem('role')
-    localStorage.removeItem('permissions')
-    isLoggedIn.value = false
-    window.location.href = '/'
+    try {
+      await api.post('/api/auth/logout')
+    } catch (e) {
+      console.error('Logout failed on server', e)
+    } finally {
+      authStore.clearAuth()
+      window.location.href = '/'
+    }
   }
 }
 
 onMounted(() => {
-  checkLoginStatus()
+  authStore.initAuth()
 })
 </script>
 
@@ -50,16 +32,16 @@ onMounted(() => {
            <router-link to="/" class="text-2xl font-bold text-indigo-600">가설라인</router-link>
            <router-link to="/" class="text-gray-600 hover:text-indigo-600 font-semibold transition">상품목록</router-link>
            <router-link to="/product/register" class="text-gray-600 hover:text-indigo-600 font-semibold transition">상품등록</router-link>
-           <router-link v-if="isLoggedIn && userPermissions.includes('ORDER:UPDATE')" to="/admin/orders" class="text-gray-600 hover:text-indigo-600 font-semibold transition">주문 관리</router-link>
-           <router-link v-if="isLoggedIn && userPermissions.includes('USER:ACCESS')" to="/admin/users" class="text-gray-600 hover:text-indigo-600 font-semibold transition">사용자 관리</router-link>
-           <router-link v-if="isLoggedIn && userPermissions.includes('AUTH:ACCESS')" to="/admin/roles" class="text-gray-600 hover:text-indigo-600 font-semibold transition">권한 관리</router-link>
+           <router-link v-if="authStore.isLoggedIn && authStore.permissions.includes('ORDER:UPDATE')" to="/admin/orders" class="text-gray-600 hover:text-indigo-600 font-semibold transition">주문 관리</router-link>
+           <router-link v-if="authStore.isLoggedIn && authStore.permissions.includes('USER:ACCESS')" to="/admin/users" class="text-gray-600 hover:text-indigo-600 font-semibold transition">사용자 관리</router-link>
+           <router-link v-if="authStore.isLoggedIn && authStore.permissions.includes('AUTH:ACCESS')" to="/admin/roles" class="text-gray-600 hover:text-indigo-600 font-semibold transition">권한 관리</router-link>
          </div>
          <div class="flex items-center space-x-6">
-           <template v-if="!isLoggedIn">
+           <template v-if="!authStore.isLoggedIn">
              <router-link to="/login" class="text-gray-600 hover:text-indigo-600 font-medium transition">로그인</router-link>
            </template>
            <template v-else>
-             <span class="text-sm text-gray-500 hidden sm:inline-block">반갑습니다, <strong>{{ username }}</strong>님</span>
+             <span class="text-sm text-gray-500 hidden sm:inline-block">반갑습니다, <strong>{{ authStore.username }}</strong>님</span>
              <router-link to="/mypage" class="text-gray-600 hover:text-indigo-600 font-medium transition">마이페이지</router-link>
              <button @click="handleLogout" class="text-gray-600 hover:text-red-600 font-medium transition">로그아웃</button>
            </template>
