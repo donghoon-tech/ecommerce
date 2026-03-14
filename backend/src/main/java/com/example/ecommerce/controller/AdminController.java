@@ -19,6 +19,8 @@ public class AdminController {
 
     private final UserService userService;
 
+    private final com.example.ecommerce.service.RoleService roleService;
+
     /**
      * 전체 사용자 목록 조회 (BusinessProfile 포함)
      */
@@ -26,6 +28,24 @@ public class AdminController {
     @PreAuthorize("hasAuthority('USER:ACCESS')")
     public ResponseEntity<List<UserDTO>> getAllUsers() {
         return ResponseEntity.ok(userService.getAllUsersWithProfiles());
+    }
+
+    /**
+     * 특정 사용자 상세 조회
+     */
+    @GetMapping("/users/{userId}")
+    @PreAuthorize("hasAuthority('USER:ACCESS')")
+    public ResponseEntity<UserDTO> getUserDetail(@PathVariable UUID userId) {
+        return ResponseEntity.ok(userService.getUserDetail(userId));
+    }
+
+    /**
+     * 전체 Role 목록 조회 (사용자 역할 변경용)
+     */
+    @GetMapping("/roles")
+    @PreAuthorize("hasAuthority('USER:ACCESS')")
+    public ResponseEntity<List<com.example.ecommerce.dto.RoleDTO>> getAllRoles() {
+        return ResponseEntity.ok(roleService.getAllRoles());
     }
 
     /**

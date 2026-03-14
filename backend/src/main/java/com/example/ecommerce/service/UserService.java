@@ -44,6 +44,19 @@ public class UserService {
         return userMapper.toDTO(user, mainProfile);
     }
 
+    @Transactional(readOnly = true)
+    public UserDTO getUserDetail(UUID userId) {
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new RuntimeException("사용자를 찾을 수 없습니다."));
+
+        BusinessProfile mainProfile = businessProfileRepository.findByUserId(user.getId()).stream()
+                .filter(BusinessProfile::isMain)
+                .findFirst()
+                .orElse(null);
+
+        return userMapper.toDTO(user, mainProfile);
+    }
+
     public UserDTO updateMyInfo(String username, UserUpdateRequest request) {
         User user = userRepository.findByUsername(username)
                 .orElseThrow(() -> new RuntimeException("사용자를 찾을 수 없습니다."));
@@ -105,7 +118,6 @@ public class UserService {
                 .orElseThrow(() -> new RuntimeException("존재하지 않는 권한입니다."));
         user.setRole(newRole);
         user.setUpdatedAt(LocalDateTime.now());
-        userRepository.save(user);
 
         BusinessProfile mainProfile = businessProfileRepository.findByUserId(user.getId()).stream()
                 .filter(BusinessProfile::isMain)
@@ -127,12 +139,18 @@ public class UserService {
         User admin = userRepository.findByUsername(adminUsername)
                 .orElseThrow(() -> new RuntimeException("관리자를 찾을 수 없습니다."));
 
+        // 1. 프로필 상태 변경
         profile.setStatus(BusinessProfile.Status.approved);
         profile.setApprovedAt(LocalDateTime.now());
         profile.setApprovedBy(admin);
         profile.setRejectionReason(null);
         profile.setUpdatedAt(LocalDateTime.now());
-        businessProfileRepository.save(profile);
+
+        // 2. 사용자 역할 변경 (UNVERIFIED -> USER)
+        User user = profile.getUser();
+        Role userRole = roleRepository.findByName("USER")
+                .orElseThrow(() -> new RuntimeException("USER 역할을 찾을 수 없습니다."));
+        user.setRole(userRole);
     }
 
     /**
@@ -145,6 +163,5 @@ public class UserService {
         profile.setStatus(BusinessProfile.Status.rejected);
         profile.setRejectionReason(reason);
         profile.setUpdatedAt(LocalDateTime.now());
-        businessProfileRepository.save(profile);
     }
 }

@@ -62,7 +62,5 @@ class UserServiceTest {
         // Then
         assertThat(result.getRole()).isEqualTo("ADMIN");
         assertThat(user.getRole().getName()).isEqualTo("ADMIN");
-
-        verify(userRepository).save(user); // 변경된 유저가 save() 호출되는지 검증
     }
 }

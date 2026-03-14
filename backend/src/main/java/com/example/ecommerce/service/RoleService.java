@@ -94,7 +94,7 @@ public class RoleService {
             role.setPermissions(resolvePermissions(permissionNames));
         }
 
-        return toDTO(roleRepository.save(role));
+        return toDTO(role);
     }
 
     /**

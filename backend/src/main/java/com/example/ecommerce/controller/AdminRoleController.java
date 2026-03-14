@@ -30,14 +30,6 @@ public class AdminRoleController {
     }
 
     /**
-     * 전체 Role 목록 조회
-     */
-    @GetMapping("/roles")
-    public ResponseEntity<List<RoleDTO>> getAllRoles() {
-        return ResponseEntity.ok(roleService.getAllRoles());
-    }
-
-    /**
      * 특정 Role 조회
      */
     @GetMapping("/roles/{roleId}")
