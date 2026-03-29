@@ -1,0 +1,7 @@
+.worktrees/
+build/
+.gradle/
+.idea/
+*.class
+*.jar
+.DS_Store
