@@ -16,6 +16,12 @@ spring:
       hibernate:
         format_sql: true
         dialect: org.hibernate.dialect.PostgreSQLDialect
+        # [CRITICAL] Hibernate 7 JSON Mapping Fix
+        # Spring Boot 4.x는 Jackson 3(tools.jackson)를 사용하지만, 
+        # Hibernate 7은 여전히 Jackson 2(com.fasterxml.jackson) 패키지를 요구함.
+        # 명시적인 FormatMapper 설정 없이는 jsonb 타입 매핑 시 NoClassDefFoundError 발생.
+        type:
+          json_format_mapper: jackson
   
   data:
     redis:
