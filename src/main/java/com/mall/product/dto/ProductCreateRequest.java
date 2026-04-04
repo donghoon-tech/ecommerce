@@ -13,7 +13,7 @@ public record ProductCreateRequest(
 ) {
     public record SkuCreateRequest(
         String skuCode,
-        String name,
+        Map<String, Object> attributes,
         BigDecimal additionalPrice,
         Integer stockQuantity
     ) {}

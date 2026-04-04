@@ -46,7 +46,7 @@ public class ProductService {
             request.skus().forEach(skuReq -> {
                 Sku sku = Sku.builder()
                         .skuCode(skuReq.skuCode())
-                        .name(skuReq.name())
+                        .attributes(skuReq.attributes())
                         .additionalPrice(skuReq.additionalPrice())
                         .stockQuantity(skuReq.stockQuantity())
                         .build();
@@ -77,7 +77,7 @@ public class ProductService {
                         .map(s -> new SkuResponse(
                                 s.getId(),
                                 s.getSkuCode(),
-                                s.getName(),
+                                s.getAttributes(),
                                 s.getAdditionalPrice(),
                                 s.getStockQuantity()
                         ))
