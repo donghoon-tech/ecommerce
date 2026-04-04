@@ -25,9 +25,6 @@ public class Sku {
     @Column(nullable = false)
     private BigDecimal additionalPrice; // 추가 금액
 
-    @Column(nullable = false)
-    private Integer stockQuantity; // 재고 수량
-
     /**
      * PostgreSQL JSONB 활용: SKU별 판매 옵션 저장 (예: 색상, 사이즈, 규격)
      */
@@ -41,19 +38,5 @@ public class Sku {
 
     public void assignProduct(Product product) {
         this.product = product;
-    }
-
-    /**
-     * 재고 차감 (동시성 고려는 서비스 레벨에서)
-     */
-    public void decreaseStock(int quantity) {
-        if (this.stockQuantity < quantity) {
-            throw new IllegalArgumentException("재고가 부족합니다. SKU: " + skuCode);
-        }
-        this.stockQuantity -= quantity;
-    }
-
-    public void increaseStock(int quantity) {
-        this.stockQuantity += quantity;
     }
 }
