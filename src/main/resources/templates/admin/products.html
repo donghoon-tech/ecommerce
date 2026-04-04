@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<html th:replace="~{admin/layout :: layout(~{::main})}">
+<body>
+<main>
+    <div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom">
+        <h1 class="h2">Products</h1>
+        <div class="btn-toolbar mb-2 mb-md-0">
+            <a href="/admin/products/new" class="btn btn-sm btn-outline-primary">Add New Product</a>
+        </div>
+    </div>
+
+    <div class="table-responsive">
+        <table class="table table-striped table-sm">
+            <thead>
+                <tr>
+                    <th>ID</th>
+                    <th>Name</th>
+                    <th>Base Price</th>
+                    <th>Status</th>
+                    <th>SKUs</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr th:each="product : ${products.content}">
+                    <td th:text="${product.id}">1</td>
+                    <td th:text="${product.name}">Product Name</td>
+                    <td th:text="${product.basePrice}">1000</td>
+                    <td><span class="badge bg-secondary">DRAFT</span></td>
+                    <td th:text="${product.skus.size()}">0</td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+
+    <!-- Pagination -->
+    <nav aria-label="Page navigation" th:if="${products.totalPages > 1}">
+        <ul class="pagination">
+            <li class="page-item" th:classappend="${products.first} ? 'disabled'">
+                <a class="page-link" th:href="@{/admin/products(page=${products.number - 1})}">Previous</a>
+            </li>
+            <li class="page-item" th:each="i : ${#numbers.sequence(0, products.totalPages - 1)}" th:classappend="${i == products.number} ? 'active'">
+                <a class="page-link" th:href="@{/admin/products(page=${i})}" th:text="${i + 1}">1</a>
+            </li>
+            <li class="page-item" th:classappend="${products.last} ? 'disabled'">
+                <a class="page-link" th:href="@{/admin/products(page=${products.number + 1})}">Next</a>
+            </li>
+        </ul>
+    </nav>
+</main>
+</body>
+</html>

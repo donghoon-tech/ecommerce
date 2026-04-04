@@ -1,0 +1,26 @@
+<!DOCTYPE html>
+<html th:replace="~{admin/layout :: layout(~{::main})}">
+<body>
+<main>
+    <div class="pt-3 pb-2 mb-3 border-bottom">
+        <h1 class="h2">Categories</h1>
+    </div>
+
+    <div class="row">
+        <div class="col-md-6">
+            <h3>Category Tree</h3>
+            <ul class="list-group">
+                <li th:fragment="treeNode(nodes)" th:each="node : ${nodes}" class="list-group-item">
+                    <span th:text="${node.name}">Category Name</span>
+                    <small class="text-muted" th:text="'(Path: ' + ${node.path} + ')'"></small>
+                    <ul th:if="${!node.children.isEmpty()}" class="list-group mt-2">
+                        <div th:replace="~{::treeNode(${node.children})}"></div>
+                    </ul>
+                </li>
+                <div th:replace="~{::treeNode(${categoryTree})}"></div>
+            </ul>
+        </div>
+    </div>
+</main>
+</body>
+</html>

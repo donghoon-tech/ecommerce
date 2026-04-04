@@ -1,0 +1,155 @@
+<!DOCTYPE html>
+<html th:replace="~{admin/layout :: layout(~{::main})}">
+<body>
+<main>
+    <div class="pt-3 pb-2 mb-3 border-bottom">
+        <h1 class="h2">Add New Product</h1>
+    </div>
+
+    <form id="productForm" class="mb-5">
+        <div class="row mb-3">
+            <div class="col-md-6">
+                <label for="name" class="form-label">Product Name</label>
+                <input type="text" class="form-control" id="name" required>
+            </div>
+            <div class="col-md-3">
+                <label for="basePrice" class="form-label">Base Price</label>
+                <input type="number" class="form-control" id="basePrice" required>
+            </div>
+            <div class="col-md-3">
+                <label for="category" class="form-label">Category</label>
+                <select class="form-select" id="categoryId" required onchange="loadAttributes(this.value)">
+                    <option value="">Select Category</option>
+                    <option th:fragment="catOption(nodes, depth)" th:each="node : ${nodes}" 
+                            th:value="${node.id}" 
+                            th:text="${'--'.repeat(depth) + ' ' + node.name}">
+                    </option>
+                    <div th:replace="~{::catOption(${categories}, 0)}"></div>
+                </select>
+            </div>
+        </div>
+
+        <div id="attributeSection" class="mb-4 card d-none">
+            <div class="card-header">Category Attributes (JSONB)</div>
+            <div class="card-body" id="attributeFields">
+                <!-- Dynamically loaded -->
+            </div>
+        </div>
+
+        <div class="mb-4 card">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                SKUs
+                <button type="button" class="btn btn-sm btn-success" onclick="addSkuRow()">Add SKU</button>
+            </div>
+            <div class="card-body">
+                <table class="table table-bordered" id="skuTable">
+                    <thead>
+                        <tr>
+                            <th>SKU Code</th>
+                            <th>Name</th>
+                            <th>Additional Price</th>
+                            <th>Stock</th>
+                            <th>Action</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <!-- Rows -->
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <button type="submit" class="btn btn-primary">Save Product</button>
+    </form>
+
+    <script>
+        async function loadAttributes(categoryId) {
+            if (!categoryId) {
+                document.getElementById('attributeSection').classList.add('d-none');
+                return;
+            }
+
+            const response = await fetch(`/api/v1/categories/${categoryId}/attributes`);
+            const attributes = await response.json();
+            
+            const fieldsContainer = document.getElementById('attributeFields');
+            fieldsContainer.innerHTML = '';
+            
+            if (attributes.length > 0) {
+                document.getElementById('attributeSection').classList.remove('d-none');
+                attributes.forEach(attr => {
+                    const div = document.createElement('div');
+                    div.className = 'mb-3';
+                    div.innerHTML = `
+                        <label class="form-label">${attr.name} (${attr.attributeType})${attr.required ? ' *' : ''}</label>
+                        <input type="${attr.attributeType === 'NUMBER' ? 'number' : 'text'}" 
+                               class="form-control attr-input" 
+                               data-name="${attr.name}" 
+                               ${attr.required ? 'required' : ''}>
+                    `;
+                    fieldsContainer.appendChild(div);
+                });
+            } else {
+                document.getElementById('attributeSection').classList.add('d-none');
+            }
+        }
+
+        function addSkuRow() {
+            const tbody = document.querySelector('#skuTable tbody');
+            const row = document.createElement('tr');
+            row.innerHTML = `
+                <td><input type="text" class="form-control sku-code" required></td>
+                <td><input type="text" class="form-control sku-name" required></td>
+                <td><input type="number" class="form-control sku-price" value="0" required></td>
+                <td><input type="number" class="form-control sku-stock" value="0" required></td>
+                <td><button type="button" class="btn btn-danger btn-sm" onclick="this.closest('tr').remove()">Remove</button></td>
+            `;
+            tbody.appendChild(row);
+        }
+
+        document.getElementById('productForm').onsubmit = async (e) => {
+            e.preventDefault();
+            
+            const attributes = {};
+            document.querySelectorAll('.attr-input').forEach(input => {
+                attributes[input.dataset.name] = input.value;
+            });
+
+            const skus = [];
+            document.querySelectorAll('#skuTable tbody tr').forEach(row => {
+                skus.push({
+                    skuCode: row.querySelector('.sku-code').value,
+                    name: row.querySelector('.sku-name').value,
+                    additionalPrice: parseFloat(row.querySelector('.sku-price').value),
+                    stockQuantity: parseInt(row.querySelector('.sku-stock').value)
+                });
+            });
+
+            const data = {
+                name: document.getElementById('name').value,
+                basePrice: parseFloat(document.getElementById('basePrice').value),
+                categoryId: parseInt(document.getElementById('categoryId').value),
+                attributes: attributes,
+                skus: skus
+            };
+
+            const response = await fetch('/api/v1/products', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(data)
+            });
+
+            if (response.ok) {
+                alert('Product saved successfully!');
+                window.location.href = '/admin/products';
+            } else {
+                alert('Failed to save product.');
+            }
+        };
+
+        // Initialize with one SKU row
+        addSkuRow();
+    </script>
+</main>
+</body>
+</html>
