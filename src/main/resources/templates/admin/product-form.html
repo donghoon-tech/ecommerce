@@ -3,7 +3,7 @@
 <body>
 <main>
     <div class="pt-3 pb-2 mb-3 border-bottom">
-        <h1 class="h2">Add New Product</h1>
+        <h1 class="h2">Add New Product (Advanced SKU)</h1>
     </div>
 
     <form id="productForm" class="mb-5">
@@ -29,24 +29,26 @@
             </div>
         </div>
 
-        <div id="attributeSection" class="mb-4 card d-none">
-            <div class="card-header">Category Attributes (JSONB)</div>
-            <div class="card-body" id="attributeFields">
+        <!-- Section 1: Common Product Specs (isOption = false) -->
+        <div id="commonAttributeSection" class="mb-4 card d-none">
+            <div class="card-header">Product Common Specs (JSONB)</div>
+            <div class="card-body" id="commonAttributeFields">
                 <!-- Dynamically loaded -->
             </div>
         </div>
 
+        <!-- Section 2: SKUs with Options (isOption = true) -->
         <div class="mb-4 card">
             <div class="card-header d-flex justify-content-between align-items-center">
-                SKUs
-                <button type="button" class="btn btn-sm btn-success" onclick="addSkuRow()">Add SKU</button>
+                SKUs & Selling Options
+                <button type="button" class="btn btn-sm btn-success" id="addSkuBtn" onclick="addSkuRow()" disabled>Add SKU</button>
             </div>
             <div class="card-body">
                 <table class="table table-bordered" id="skuTable">
                     <thead>
-                        <tr>
+                        <tr id="skuTableHeader">
                             <th>SKU Code</th>
-                            <th>Name</th>
+                            <!-- Dynamic Option Columns -->
                             <th>Additional Price</th>
                             <th>Stock</th>
                             <th>Action</th>
@@ -63,63 +65,116 @@
     </form>
 
     <script>
+        let currentOptions = []; // isOption = true attributes
+
         async function loadAttributes(categoryId) {
+            const addSkuBtn = document.getElementById('addSkuBtn');
+            const skuTableBody = document.querySelector('#skuTable tbody');
+            const commonSection = document.getElementById('commonAttributeSection');
+            const commonFields = document.getElementById('commonAttributeFields');
+            const tableHeader = document.getElementById('skuTableHeader');
+
             if (!categoryId) {
-                document.getElementById('attributeSection').classList.add('d-none');
+                commonSection.classList.add('d-none');
+                addSkuBtn.disabled = true;
                 return;
             }
 
             const response = await fetch(`/api/v1/categories/${categoryId}/attributes`);
             const attributes = await response.json();
             
-            const fieldsContainer = document.getElementById('attributeFields');
-            fieldsContainer.innerHTML = '';
-            
-            if (attributes.length > 0) {
-                document.getElementById('attributeSection').classList.remove('d-none');
-                attributes.forEach(attr => {
+            // 1. Split attributes
+            const commons = attributes.filter(a => !a.isOption);
+            currentOptions = attributes.filter(a => a.isOption);
+
+            // 2. Render Common Specs
+            commonFields.innerHTML = '';
+            if (commons.length > 0) {
+                commonSection.classList.remove('d-none');
+                commons.forEach(attr => {
                     const div = document.createElement('div');
                     div.className = 'mb-3';
                     div.innerHTML = `
                         <label class="form-label">${attr.name} (${attr.attributeType})${attr.required ? ' *' : ''}</label>
                         <input type="${attr.attributeType === 'NUMBER' ? 'number' : 'text'}" 
-                               class="form-control attr-input" 
+                               class="form-control common-attr-input" 
                                data-name="${attr.name}" 
                                ${attr.required ? 'required' : ''}>
                     `;
-                    fieldsContainer.appendChild(div);
+                    commonFields.appendChild(div);
                 });
             } else {
-                document.getElementById('attributeSection').classList.add('d-none');
+                commonSection.classList.add('d-none');
             }
+
+            // 3. Update SKU Table Header
+            tableHeader.innerHTML = '<th>SKU Code</th>';
+            currentOptions.forEach(opt => {
+                const th = document.createElement('th');
+                th.innerText = `${opt.name} (${opt.attributeType})`;
+                tableHeader.appendChild(th);
+            });
+            tableHeader.innerHTML += '<th>Add. Price</th><th>Stock</th><th>Action</th>';
+
+            // 4. Reset SKU Table
+            skuTableBody.innerHTML = '';
+            addSkuBtn.disabled = false;
+            addSkuRow(); // Add initial row
         }
 
         function addSkuRow() {
             const tbody = document.querySelector('#skuTable tbody');
             const row = document.createElement('tr');
-            row.innerHTML = `
-                <td><input type="text" class="form-control sku-code" required></td>
-                <td><input type="text" class="form-control sku-name" required></td>
+            
+            let html = `<td><input type="text" class="form-control sku-code" required placeholder="e.g. SKU-001"></td>`;
+            
+            // Dynamic columns for each option attribute
+            currentOptions.forEach(opt => {
+                html += `<td>
+                    <input type="${opt.attributeType === 'NUMBER' ? 'number' : 'text'}" 
+                           class="form-control sku-option-input" 
+                           data-name="${opt.name}" 
+                           required>
+                </td>`;
+            });
+
+            html += `
                 <td><input type="number" class="form-control sku-price" value="0" required></td>
                 <td><input type="number" class="form-control sku-stock" value="0" required></td>
                 <td><button type="button" class="btn btn-danger btn-sm" onclick="this.closest('tr').remove()">Remove</button></td>
             `;
+            
+            row.innerHTML = html;
             tbody.appendChild(row);
         }
 
         document.getElementById('productForm').onsubmit = async (e) => {
             e.preventDefault();
             
-            const attributes = {};
-            document.querySelectorAll('.attr-input').forEach(input => {
-                attributes[input.dataset.name] = input.value;
+            // Product common attributes
+            const productAttributes = {};
+            document.querySelectorAll('.common-attr-input').forEach(input => {
+                productAttributes[input.dataset.name] = input.value;
             });
 
+            // SKU list
             const skus = [];
-            document.querySelectorAll('#skuTable tbody tr').forEach(row => {
+            const rows = document.querySelectorAll('#skuTable tbody tr');
+            
+            if (rows.length === 0) {
+                alert('At least one SKU is required.');
+                return;
+            }
+
+            rows.forEach(row => {
+                const skuOptions = {};
+                row.querySelectorAll('.sku-option-input').forEach(input => {
+                    skuOptions[input.dataset.name] = input.value;
+                });
+
                 skus.push({
                     skuCode: row.querySelector('.sku-code').value,
-                    name: row.querySelector('.sku-name').value,
+                    attributes: skuOptions,
                     additionalPrice: parseFloat(row.querySelector('.sku-price').value),
                     stockQuantity: parseInt(row.querySelector('.sku-stock').value)
                 });
@@ -129,7 +184,7 @@
                 name: document.getElementById('name').value,
                 basePrice: parseFloat(document.getElementById('basePrice').value),
                 categoryId: parseInt(document.getElementById('categoryId').value),
-                attributes: attributes,
+                attributes: productAttributes,
                 skus: skus
             };
 
@@ -140,15 +195,12 @@
             });
 
             if (response.ok) {
-                alert('Product saved successfully!');
+                alert('Advanced Product saved successfully!');
                 window.location.href = '/admin/products';
             } else {
                 alert('Failed to save product.');
             }
         };
-
-        // Initialize with one SKU row
-        addSkuRow();
     </script>
 </main>
 </body>
