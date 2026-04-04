@@ -15,14 +15,12 @@ spring:
         format_sql: true
         dialect: org.hibernate.dialect.H2Dialect
         # [CRITICAL] Hibernate 7 JSON Mapping Fix
-        # Spring Boot 4.x(Jackson 3)와 Hibernate 7(Jackson 2 요구) 간의 의존성 불일치 해결.
-        # Jackson 2 라이브러리가 classpath에 존재해야 하며, Hibernate에 수동 매핑 지시가 필요함.
         type:
           json_format_mapper: jackson
   
   data:
     redis:
-      host: localhost
+      host: 127.0.0.1
       port: 6379
   
   kafka:
