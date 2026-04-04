@@ -6,6 +6,7 @@ import com.mall.product.dto.ProductResponse;
 import com.mall.product.dto.ProductSearchRequest;
 import com.mall.product.dto.SkuResponse;
 import com.mall.product.repository.CategoryRepository;
+import com.mall.product.repository.InventoryRepository;
 import com.mall.product.repository.ProductRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
@@ -24,6 +25,7 @@ public class ProductService {
 
     private final ProductRepository productRepository;
     private final CategoryRepository categoryRepository;
+    private final InventoryRepository inventoryRepository;
 
     public Page<ProductResponse> searchProducts(ProductSearchRequest request) {
         Pageable pageable = PageRequest.of(request.page(), request.size());
@@ -40,7 +42,7 @@ public class ProductService {
                 .basePrice(request.basePrice())
                 .category(category)
                 .attributes(request.attributes())
-                .status(ProductStatus.DRAFT) // 기본값은 초안
+                .status(ProductStatus.DRAFT)
                 .build();
 
         if (request.skus() != null) {
@@ -49,9 +51,15 @@ public class ProductService {
                         .skuCode(skuReq.skuCode())
                         .attributes(skuReq.attributes())
                         .additionalPrice(skuReq.additionalPrice())
-                        .stockQuantity(skuReq.stockQuantity())
                         .build();
                 product.addSku(sku);
+                
+                // Inventory 생성 및 연결
+                Inventory inventory = Inventory.builder()
+                        .sku(sku)
+                        .stockQuantity(skuReq.stockQuantity())
+                        .build();
+                inventoryRepository.save(inventory);
             });
         }
 
@@ -72,9 +80,6 @@ public class ProductService {
         return mapToProductResponse(p);
     }
 
-    /**
-     * 특정 옵션 조합(예: 색상=블랙, 용량=128GB)에 해당하는 SKU를 찾음
-     */
     public SkuResponse getSkuByOptions(Long productId, Map<String, Object> options) {
         Product product = productRepository.findById(productId)
                 .orElseThrow(() -> new IllegalArgumentException("상품이 존재하지 않습니다: " + productId));
@@ -84,13 +89,7 @@ public class ProductService {
                 .findFirst()
                 .orElseThrow(() -> new IllegalArgumentException("해당 옵션 조합의 상품이 존재하지 않습니다."));
 
-        return new SkuResponse(
-                sku.getId(),
-                sku.getSkuCode(),
-                sku.getAttributes(),
-                sku.getAdditionalPrice(),
-                sku.getStockQuantity()
-        );
+        return mapToSkuResponse(sku);
     }
 
     private ProductResponse mapToProductResponse(Product p) {
@@ -100,14 +99,22 @@ public class ProductService {
                 p.getBasePrice(),
                 p.getAttributes(),
                 p.getSkus().stream()
-                        .map(s -> new SkuResponse(
-                                s.getId(),
-                                s.getSkuCode(),
-                                s.getAttributes(),
-                                s.getAdditionalPrice(),
-                                s.getStockQuantity()
-                        ))
+                        .map(this::mapToSkuResponse)
                         .collect(Collectors.toList())
+        );
+    }
+
+    private SkuResponse mapToSkuResponse(Sku s) {
+        Integer stock = inventoryRepository.findBySkuId(s.getId())
+                .map(Inventory::getStockQuantity)
+                .orElse(0);
+
+        return new SkuResponse(
+                s.getId(),
+                s.getSkuCode(),
+                s.getAttributes(),
+                s.getAdditionalPrice(),
+                stock
         );
     }
 }

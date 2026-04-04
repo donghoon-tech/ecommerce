@@ -1,9 +1,6 @@
 package com.mall.product.repository;
 
-import com.mall.product.domain.ProductStatus;
-import com.mall.product.domain.QCategory;
-import com.mall.product.domain.QProduct;
-import com.mall.product.domain.QSku;
+import com.mall.product.domain.*;
 import com.mall.product.dto.ProductResponse;
 import com.mall.product.dto.ProductSearchRequest;
 import com.mall.product.dto.SkuResponse;
@@ -22,6 +19,7 @@ import java.util.stream.Collectors;
 import static com.mall.product.domain.QProduct.product;
 import static com.mall.product.domain.QCategory.category;
 import static com.mall.product.domain.QSku.sku;
+import static com.mall.product.domain.QInventory.inventory;
 
 @RequiredArgsConstructor
 public class ProductRepositoryImpl implements ProductRepositoryCustom {
@@ -68,13 +66,20 @@ public class ProductRepositoryImpl implements ProductRepositoryCustom {
                         p.getBasePrice(),
                         p.getAttributes(),
                         p.getSkus().stream()
-                                .map(s -> new SkuResponse(
-                                        s.getId(),
-                                        s.getSkuCode(),
-                                        s.getAttributes(),
-                                        s.getAdditionalPrice(),
-                                        s.getStockQuantity()
-                                ))
+                                .map(s -> {
+                                    Integer stock = queryFactory
+                                            .select(inventory.stockQuantity)
+                                            .from(inventory)
+                                            .where(inventory.sku.id.eq(s.getId()))
+                                            .fetchOne();
+                                    return new SkuResponse(
+                                            s.getId(),
+                                            s.getSkuCode(),
+                                            s.getAttributes(),
+                                            s.getAdditionalPrice(),
+                                            stock != null ? stock : 0
+                                    );
+                                })
                                 .collect(Collectors.toList())
                 ))
                 .collect(Collectors.toList());
