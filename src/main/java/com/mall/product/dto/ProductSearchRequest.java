@@ -1,5 +1,6 @@
 package com.mall.product.dto;
 
+import com.mall.product.domain.ProductStatus;
 import java.math.BigDecimal;
 
 public record ProductSearchRequest(
@@ -7,11 +8,11 @@ public record ProductSearchRequest(
     Long categoryId,
     BigDecimal minPrice,
     BigDecimal maxPrice,
-    Integer page,
-    Integer size
+    ProductStatus status,
+    int page,
+    int size
 ) {
-    public ProductSearchRequest {
-        if (page == null) page = 0;
-        if (size == null) size = 20;
+    public ProductSearchRequest(String name, Long categoryId, BigDecimal minPrice, BigDecimal maxPrice, int page, int size) {
+        this(name, categoryId, minPrice, maxPrice, null, page, size);
     }
 }
