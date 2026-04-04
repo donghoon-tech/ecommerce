@@ -1,12 +1,12 @@
 package com.mall.product.repository;
 
+import com.mall.product.domain.ProductStatus;
 import com.mall.product.domain.QCategory;
 import com.mall.product.domain.QProduct;
 import com.mall.product.domain.QSku;
 import com.mall.product.dto.ProductResponse;
 import com.mall.product.dto.ProductSearchRequest;
 import com.mall.product.dto.SkuResponse;
-import com.querydsl.core.types.Projections;
 import com.querydsl.core.types.dsl.BooleanExpression;
 import com.querydsl.jpa.impl.JPAQueryFactory;
 import lombok.RequiredArgsConstructor;
@@ -30,7 +30,6 @@ public class ProductRepositoryImpl implements ProductRepositoryCustom {
 
     @Override
     public Page<ProductResponse> searchProducts(ProductSearchRequest request, Pageable pageable) {
-        // [Task 3: Step 2] Implement searchProducts with BooleanExpressions
         List<Long> productIds = queryFactory
                 .select(product.id)
                 .from(product)
@@ -38,7 +37,8 @@ public class ProductRepositoryImpl implements ProductRepositoryCustom {
                 .where(
                         nameContains(request.name()),
                         categoryPathStartsWith(request.categoryId()),
-                        priceBetween(request.minPrice(), request.maxPrice())
+                        priceBetween(request.minPrice(), request.maxPrice()),
+                        statusEq(request.status())
                 )
                 .offset(pageable.getOffset())
                 .limit(pageable.getPageSize())
@@ -51,7 +51,8 @@ public class ProductRepositoryImpl implements ProductRepositoryCustom {
                 .where(
                         nameContains(request.name()),
                         categoryPathStartsWith(request.categoryId()),
-                        priceBetween(request.minPrice(), request.maxPrice())
+                        priceBetween(request.minPrice(), request.maxPrice()),
+                        statusEq(request.status())
                 )
                 .fetchOne();
 
@@ -88,7 +89,6 @@ public class ProductRepositoryImpl implements ProductRepositoryCustom {
     private BooleanExpression categoryPathStartsWith(Long categoryId) {
         if (categoryId == null) return null;
         
-        // [Task 3: Step 3] Add path.startsWith logic for category filtering
         String path = queryFactory
                 .select(category.path)
                 .from(category)
@@ -103,5 +103,11 @@ public class ProductRepositoryImpl implements ProductRepositoryCustom {
         if (min != null && max != null) return product.basePrice.between(min, max);
         if (min != null) return product.basePrice.goe(min);
         return product.basePrice.loe(max);
+    }
+
+    private BooleanExpression statusEq(ProductStatus status) {
+        // null인 경우 기본적으로 ACTIVE만 검색 (사용자용 검색)
+        // DRAFT나 HIDDEN은 관리자용 검색이나 특정 상태 조회 시에만 사용됨
+        return status != null ? product.status.eq(status) : product.status.eq(ProductStatus.ACTIVE);
     }
 }
