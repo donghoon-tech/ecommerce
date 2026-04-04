@@ -3,30 +3,50 @@
 <body>
 <main>
     <div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom">
-        <h1 class="h2">Products</h1>
+        <h1 class="h2">Products (Advanced View)</h1>
         <div class="btn-toolbar mb-2 mb-md-0">
             <a href="/admin/products/new" class="btn btn-sm btn-outline-primary">Add New Product</a>
         </div>
     </div>
 
     <div class="table-responsive">
-        <table class="table table-striped table-sm">
-            <thead>
+        <table class="table table-hover table-sm">
+            <thead class="table-light">
                 <tr>
                     <th>ID</th>
                     <th>Name</th>
                     <th>Base Price</th>
                     <th>Status</th>
-                    <th>SKUs</th>
+                    <th>SKUs (Options & Stock)</th>
                 </tr>
             </thead>
             <tbody>
                 <tr th:each="product : ${products.content}">
                     <td th:text="${product.id}">1</td>
-                    <td th:text="${product.name}">Product Name</td>
-                    <td th:text="${product.basePrice}">1000</td>
-                    <td><span class="badge bg-secondary">DRAFT</span></td>
-                    <td th:text="${product.skus.size()}">0</td>
+                    <td>
+                        <strong th:text="${product.name}">Product Name</strong><br/>
+                        <small class="text-muted" th:each="entry : ${product.attributes.entrySet()}" 
+                               th:text="${entry.key} + ': ' + ${entry.value} + ' '">
+                        </small>
+                    </td>
+                    <td th:text="${#numbers.formatDecimal(product.basePrice, 0, 'COMMA', 0, 'POINT')} + '원'">1,000원</td>
+                    <td>
+                        <span class="badge" 
+                              th:classappend="${product.status.name() == 'ACTIVE' ? 'bg-success' : 'bg-secondary'}"
+                              th:text="${product.status}">DRAFT</span>
+                    </td>
+                    <td>
+                        <ul class="list-unstyled mb-0">
+                            <li th:each="sku : ${product.skus}" class="mb-1">
+                                <span class="badge bg-info text-dark" th:text="${sku.skuCode}">SKU-CODE</span>
+                                <small th:each="attr : ${sku.attributes.entrySet()}" 
+                                       th:text="'[' + ${attr.key} + ': ' + ${attr.value} + '] '">
+                                </small>
+                                <span class="badge rounded-pill bg-light text-dark border" 
+                                      th:text="'Stock: ' + ${sku.stockQuantity}">Qty: 0</span>
+                            </li>
+                        </ul>
+                    </td>
                 </tr>
             </tbody>
         </table>
