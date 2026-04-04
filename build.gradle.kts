@@ -1,7 +1,7 @@
 plugins {
     java
     id("org.springframework.boot") version "4.0.4"
-    id("io.spring.dependency-management") version "1.1.4"
+    id("io.spring.dependency-management") version "1.1.7"
 }
 
 group = "com.mall"
@@ -15,6 +15,7 @@ java {
 
 repositories {
     mavenCentral()
+    maven { url = uri("https://repo.spring.io/release") }
 }
 
 dependencies {
@@ -22,7 +23,12 @@ dependencies {
     implementation("org.springframework.boot:spring-boot-starter-web")
     implementation("org.springframework.boot:spring-boot-starter-thymeleaf")
     implementation("org.springframework.boot:spring-boot-starter-data-redis")
-    implementation("org.redisson:redisson-spring-boot-starter:3.44.0")
+    // Spring Boot 4.0 renamed aop to aspectj
+    implementation("org.springframework.boot:spring-boot-starter-aspectj")
+    // Redisson 4.x is required for Spring Boot 4 / Spring Framework 7
+    implementation("org.redisson:redisson-spring-boot-starter:4.3.0")
+    implementation("org.redisson:redisson-spring-data-40:4.3.0")
+    
     implementation("org.springframework.kafka:spring-kafka")
     
     // Lombok
@@ -40,7 +46,7 @@ dependencies {
     annotationProcessor("jakarta.persistence:jakarta.persistence-api")
     annotationProcessor("jakarta.annotation:jakarta.annotation-api")
 
-    // Jackson 2 for Hibernate 7 compatibility
+    // Jackson 3 is default in Spring Boot 4
     implementation("com.fasterxml.jackson.core:jackson-databind")
     implementation("com.fasterxml.jackson.core:jackson-core")
 
