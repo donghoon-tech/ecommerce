@@ -68,7 +68,8 @@ public class CategoryService {
                         attr.getId(),
                         attr.getName(),
                         attr.getAttributeType(),
-                        attr.isRequired()
+                        attr.isRequired(),
+                        attr.isOption()
                 ))
                 .collect(Collectors.toList());
     }

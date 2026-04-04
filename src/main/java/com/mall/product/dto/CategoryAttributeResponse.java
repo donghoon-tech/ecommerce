@@ -4,5 +4,6 @@ public record CategoryAttributeResponse(
     Long id,
     String name,
     String attributeType,
-    boolean required
+    boolean required,
+    boolean isOption
 ) {}

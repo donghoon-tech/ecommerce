@@ -22,6 +22,8 @@ public class CategoryAttribute {
 
     private boolean required; // 필수 여부
 
+    private boolean isOption; // 판매 옵션 여부 (true면 SKU 속성, false면 Product 공통 속성)
+
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "category_id")
     private Category category;
