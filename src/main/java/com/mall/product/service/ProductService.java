@@ -14,6 +14,7 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.Map;
 import java.util.stream.Collectors;
 
 @Service
@@ -68,6 +69,31 @@ public class ProductService {
         Product p = productRepository.findById(productId)
                 .orElseThrow(() -> new IllegalArgumentException("상품이 존재하지 않습니다: " + productId));
                 
+        return mapToProductResponse(p);
+    }
+
+    /**
+     * 특정 옵션 조합(예: 색상=블랙, 용량=128GB)에 해당하는 SKU를 찾음
+     */
+    public SkuResponse getSkuByOptions(Long productId, Map<String, Object> options) {
+        Product product = productRepository.findById(productId)
+                .orElseThrow(() -> new IllegalArgumentException("상품이 존재하지 않습니다: " + productId));
+
+        Sku sku = product.getSkus().stream()
+                .filter(s -> s.getAttributes().equals(options))
+                .findFirst()
+                .orElseThrow(() -> new IllegalArgumentException("해당 옵션 조합의 상품이 존재하지 않습니다."));
+
+        return new SkuResponse(
+                sku.getId(),
+                sku.getSkuCode(),
+                sku.getAttributes(),
+                sku.getAdditionalPrice(),
+                sku.getStockQuantity()
+        );
+    }
+
+    private ProductResponse mapToProductResponse(Product p) {
         return new ProductResponse(
                 p.getId(),
                 p.getName(),
