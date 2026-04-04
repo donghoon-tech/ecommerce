@@ -2,8 +2,11 @@ package com.mall.product.domain;
 
 import jakarta.persistence.*;
 import lombok.*;
+import org.hibernate.annotations.JdbcTypeCode;
+import org.hibernate.type.SqlTypes;
 
 import java.math.BigDecimal;
+import java.util.Map;
 
 @Entity
 @Getter
@@ -20,13 +23,17 @@ public class Sku {
     private String skuCode; // 재고 관리 식별자
 
     @Column(nullable = false)
-    private String name; // 옵션 명 (예: 블랙-260)
-
-    @Column(nullable = false)
     private BigDecimal additionalPrice; // 추가 금액
 
     @Column(nullable = false)
     private Integer stockQuantity; // 재고 수량
+
+    /**
+     * PostgreSQL JSONB 활용: SKU별 판매 옵션 저장 (예: 색상, 사이즈, 규격)
+     */
+    @JdbcTypeCode(SqlTypes.JSON)
+    @Column(columnDefinition = "jsonb")
+    private Map<String, Object> attributes;
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "product_id")
