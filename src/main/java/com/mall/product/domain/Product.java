@@ -27,6 +27,11 @@ public class Product {
     @Column(nullable = false)
     private BigDecimal basePrice;
 
+    @Enumerated(EnumType.STRING)
+    @Column(nullable = false)
+    @Builder.Default
+    private ProductStatus status = ProductStatus.DRAFT;
+
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "category_id")
     private Category category;
@@ -42,8 +47,21 @@ public class Product {
     @Builder.Default
     private List<Sku> skus = new ArrayList<>();
 
+    @OneToMany(mappedBy = "product", cascade = CascadeType.ALL, orphanRemoval = true)
+    @Builder.Default
+    private List<ProductImage> images = new ArrayList<>();
+
     public void addSku(Sku sku) {
         this.skus.add(sku);
         sku.assignProduct(this);
+    }
+
+    public void addImage(ProductImage image) {
+        this.images.add(image);
+        image.assignProduct(this);
+    }
+
+    public void updateStatus(ProductStatus status) {
+        this.status = status;
     }
 }

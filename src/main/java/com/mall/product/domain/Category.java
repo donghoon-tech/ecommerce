@@ -5,6 +5,9 @@ import lombok.AccessLevel;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 
+import java.util.ArrayList;
+import java.util.List;
+
 @Entity
 @Getter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
@@ -24,6 +27,9 @@ public class Category {
     @Column(nullable = false)
     private String path;
 
+    @OneToMany(mappedBy = "category", cascade = CascadeType.ALL, orphanRemoval = true)
+    private List<CategoryAttribute> attributes = new ArrayList<>();
+
     public Category(String name, Category parent) {
         this.name = name;
         this.parent = parent;
@@ -36,6 +42,11 @@ public class Category {
         this.name = name;
         this.parent = parent;
         this.path = generatePath(parent);
+    }
+
+    public void addAttribute(CategoryAttribute attribute) {
+        this.attributes.add(attribute);
+        attribute.assignCategory(this);
     }
 
     private String generatePath(Category parent) {
