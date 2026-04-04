@@ -71,7 +71,7 @@ public class ProductRepositoryImpl implements ProductRepositoryCustom {
                                 .map(s -> new SkuResponse(
                                         s.getId(),
                                         s.getSkuCode(),
-                                        s.getName(),
+                                        s.getAttributes(),
                                         s.getAdditionalPrice(),
                                         s.getStockQuantity()
                                 ))
@@ -106,8 +106,6 @@ public class ProductRepositoryImpl implements ProductRepositoryCustom {
     }
 
     private BooleanExpression statusEq(ProductStatus status) {
-        // null인 경우 기본적으로 ACTIVE만 검색 (사용자용 검색)
-        // DRAFT나 HIDDEN은 관리자용 검색이나 특정 상태 조회 시에만 사용됨
         return status != null ? product.status.eq(status) : product.status.eq(ProductStatus.ACTIVE);
     }
 }
