@@ -114,4 +114,26 @@ class OrderServiceTest {
         // 주문이 저장되지 않았어야 함
         assertThat(orderRepository.findAll()).isEmpty();
     }
+
+    @Test
+    @DisplayName("주문을 취소하면 재고가 원복되고 주문 상태가 CANCELLED로 변경된다")
+    void cancelOrderAndRestoreStock() {
+        // Given
+        Long userId = 1L;
+        cartService.addItem(userId, null, testSku.getId(), 3);
+        Long orderId = orderService.createOrder(userId);
+        
+        Inventory inventoryAfterOrder = inventoryRepository.findBySkuId(testSku.getId()).orElseThrow();
+        assertThat(inventoryAfterOrder.getStockQuantity()).isEqualTo(7);
+
+        // When
+        orderService.cancelOrder(orderId);
+
+        // Then
+        Order found = orderRepository.findById(orderId).orElseThrow();
+        assertThat(found.getStatus()).isEqualTo(OrderStatus.CANCELLED);
+        
+        Inventory inventoryAfterCancel = inventoryRepository.findBySkuId(testSku.getId()).orElseThrow();
+        assertThat(inventoryAfterCancel.getStockQuantity()).isEqualTo(10);
+    }
 }
