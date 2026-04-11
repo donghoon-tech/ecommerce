@@ -43,6 +43,16 @@ public class InventoryService {
         log.info("Stock decreased successfully. SKU: {}, Qty: -{}", skuId, quantity);
     }
 
+    /**
+     * 재고 복구 (락 적용 및 품절 캐시 제거)
+     */
+    @DistributedLock(key = "#skuId")
+    public void increaseStock(Long skuId, int quantity) {
+        inventoryRepository.increaseStock(skuId, quantity);
+        removeSoldOutCache(skuId);
+        log.info("Stock restored successfully. SKU: {}, Qty: +{}", skuId, quantity);
+    }
+
     private boolean isSoldOut(Long skuId) {
         RBucket<String> bucket = redissonClient.getBucket(SOLD_OUT_PREFIX + skuId);
         return bucket.isExists();
@@ -51,5 +61,9 @@ public class InventoryService {
     private void markAsSoldOut(Long skuId) {
         RBucket<String> bucket = redissonClient.getBucket(SOLD_OUT_PREFIX + skuId);
         bucket.set("TRUE", 10, TimeUnit.SECONDS);
+    }
+
+    private void removeSoldOutCache(Long skuId) {
+        redissonClient.getBucket(SOLD_OUT_PREFIX + skuId).delete();
     }
 }
